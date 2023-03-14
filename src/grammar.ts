@@ -1,3 +1,5 @@
+import { parse, Texter } from './parse'
+
 export enum TokenKind {
   Term, NonTerm
 }
@@ -16,7 +18,7 @@ export type Token = Term | NonTerm
 
 export class Productor {
   tokens: Token[] = []
-  constructor(public name: string) {}
+  constructor(public name: string, public id: number) {}
   t = this.term
   n = this.nonterm
   term(token: string) {
@@ -35,13 +37,23 @@ export class Productor {
   }
 }
 
-export class Grammar {
-  productors: Productor[] = []
-  constructor(public entry: string) {}
+export class Grammar extends Map<string, Productor[]> {
+  productorCount = 0
+  constructor(public entry: string) {
+    super()
+  }
   p = this.productor
   productor(name: string) {
-    const productor = new Productor(name)
-    this.productors.push(productor)
+    let productors = this.get(name)
+    if (!productors) {
+      productors = []
+      this.set(name, productors)
+    }
+    const productor = new Productor(name, this.productorCount++)
+    productors.push(productor)
     return productor
+  }
+  parse(texter: Texter) {
+    return parse(this, texter)
   }
 }
