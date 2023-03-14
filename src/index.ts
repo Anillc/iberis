@@ -2,11 +2,10 @@ import { Grammar } from './grammar'
 export * from './grammar'
 
 const g = new Grammar('S')
-g.p('S').n('A')
-g.p('A').n('B')
-g.p('B').t('t')
+g.p('S').n('A').n('A')
+g.p('A')
 
-const stack = ['t']
+const stack = []
 
 g.parse((type) => {
   console.log(type)

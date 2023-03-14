@@ -44,8 +44,12 @@ export function parse(grammar: Grammar, texter: Texter) {
       if (item.productor.tokens.length === item.point) {
         // compete
         // TODO: accept entry
+        if (item.productor.name === grammar.entry) {
+          console.log('accept')
+          continue
+        }
         for (const origin of sets[item.origin].items) {
-          if (origin.productor.tokens[origin.point].token !== item.productor.name) {
+          if (origin.productor.tokens[origin.point]?.token !== item.productor.name) {
             continue
           }
           set.add({
@@ -79,6 +83,13 @@ export function parse(grammar: Grammar, texter: Texter) {
               origin: i,
             })
           })
+          if (grammar.nullable(token.token)) {
+            set.add({
+              productor: item.productor,
+              point: item.point + 1,
+              origin: item.origin
+            })
+          }
         }
       }
     }
