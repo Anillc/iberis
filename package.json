@@ -1,10 +1,13 @@
 {
   "name": "earley",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "lib/index.js",
   "repository": "https://github.com/Anillc/earley.git",
   "author": "Anillc <void@anillc.cn>",
   "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
   "devDependencies": {
     "@types/node": "^18.15.2",
     "ts-node": "^10.9.1",

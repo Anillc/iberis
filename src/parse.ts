@@ -79,13 +79,18 @@ export function parse(grammar: Grammar, texter: Texter) {
           } satisfies Branch)
         }
         // length of items may change in this loop
-        const len = sets[item.origin].items.length
+        const origins = sets[item.origin].items
+        const len = origins.length
         for (let k = 0; k < len; k++) {
-          const origin = sets[item.origin].items[k]
+          const origin = origins[k]
           if (origin.productor.tokens[origin.point]?.token !== item.productor.name) {
             continue
           }
-          const branches = (origin.node.nodes[origin.point] ||= []) as Branch[]
+          const nextNode: Node = {
+            name: origin.node.name,
+            nodes: [...origin.node.nodes],
+          }
+          const branches = (nextNode.nodes[origin.point] ||= []) as Branch[]
           branches.push({
             branch: item.productor,
             node: item.node,
@@ -94,7 +99,7 @@ export function parse(grammar: Grammar, texter: Texter) {
             productor: origin.productor,
             point: origin.point + 1,
             origin: origin.origin,
-            node: origin.node,
+            node: nextNode,
           })
         }
       } else {
@@ -104,12 +109,15 @@ export function parse(grammar: Grammar, texter: Texter) {
           const text = textCache.get(token.token, texter)
           if (!text) continue
           const nextSet = (sets[i + 1] ||= new ItemSet())
-          item.node.nodes.push(text)
+          const nextNode: Node = {
+            name: item.node.name,
+            nodes: [...item.node.nodes, text],
+          }
           nextSet.add({
             productor: item.productor,
             point: item.point + 1,
             origin: item.origin,
-            node: item.node,
+            node: nextNode,
           })
         } else {
           // predicate
@@ -133,7 +141,10 @@ export function parse(grammar: Grammar, texter: Texter) {
               productor: item.productor,
               point: item.point + 1,
               origin: item.origin,
-              node: item.node,
+              node: {
+                name: item.node.name,
+                nodes: [...item.node.nodes],
+              },
             })
           }
         }
