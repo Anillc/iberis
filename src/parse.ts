@@ -1,4 +1,4 @@
-import { Grammar, Productor, Token, TokenKind } from './grammar'
+import { Grammar, Productor, TokenKind } from './grammar'
 
 export interface Text {
   term: string
@@ -37,6 +37,18 @@ class ItemSet {
   }
 }
 
+class Cache<K, V> {
+  map = new Map<K, V>()
+  get(key: K, create?: (key: K) => V) {
+    let value = this.map.get(key)
+    if (!value && create) {
+      value = create(key)
+      this.map.set(key, value)
+    }
+    return value
+  }
+}
+
 export function parse(grammar: Grammar, texter: Texter) {
   const results: Branch[] = []
   const sets: ItemSet[] = [new ItemSet()]
@@ -55,6 +67,7 @@ export function parse(grammar: Grammar, texter: Texter) {
 
   for (let i = 0; i < sets.length; i++) {
     const set = sets[i]
+    const textCache = new Cache<string, Text>()
     for (let j = 0; j < set.items.length; j++) {
       const item = set.items[j]
       if (item.productor.tokens.length === item.point) {
@@ -88,7 +101,7 @@ export function parse(grammar: Grammar, texter: Texter) {
         const token = item.productor.tokens[item.point]
         if (token.kind === TokenKind.Term) {
           // scan
-          const text = texter(token.token)
+          const text = textCache.get(token.token, texter)
           if (!text) continue
           const nextSet = (sets[i + 1] ||= new ItemSet())
           item.node.nodes.push(text)
