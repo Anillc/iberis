@@ -6,12 +6,12 @@ export interface Text {
 
 export type Texter = (type: string) => Text
 
-interface Branch {
+export interface Branch {
   branch: Productor
-  node: Node  
+  node: Node
 }
 
-interface Node {
+export interface Node {
   name: string
   nodes: (Text | Branch[])[]
 }
@@ -38,6 +38,7 @@ class ItemSet {
 }
 
 export function parse(grammar: Grammar, texter: Texter) {
+  const results: Branch[] = []
   const sets: ItemSet[] = [new ItemSet()]
   const entries = grammar.get(grammar.entry)
   entries.forEach(productor => {
@@ -58,16 +59,21 @@ export function parse(grammar: Grammar, texter: Texter) {
       const item = set.items[j]
       if (item.productor.tokens.length === item.point) {
         // compete
-        // TODO: accept entry
         if (item.productor.name === grammar.entry) {
-          console.log('accept')
+          results.push({
+            branch: item.productor,
+            node: item.node,
+          } satisfies Branch)
         }
-        for (const origin of sets[item.origin].items) {
+        // length of items may change in this loop
+        const len = sets[item.origin].items.length
+        for (let k = 0; k < len; k++) {
+          const origin = sets[item.origin].items[k]
           if (origin.productor.tokens[origin.point]?.token !== item.productor.name) {
             continue
           }
-          const branch = (origin.node.nodes[origin.point] ||= []) as Branch[]
-          branch.push({
+          const branches = (origin.node.nodes[origin.point] ||= []) as Branch[]
+          branches.push({
             branch: item.productor,
             node: item.node,
           })
@@ -108,14 +114,8 @@ export function parse(grammar: Grammar, texter: Texter) {
           })
           const nullables = grammar.nullable(token.token)
           if (nullables.size !== 0) {
-            const branches: Branch[] = [...nullables].map(productor => ({
-              branch: productor,
-              node: {
-                name: productor.name,
-                nodes: [],
-              },
-            }))
-            item.node.nodes.push(branches)
+            // This branch will be added in the predications,
+            // so we don't need to create a branch now.
             set.add({
               productor: item.productor,
               point: item.point + 1,
@@ -127,4 +127,5 @@ export function parse(grammar: Grammar, texter: Texter) {
       }
     }
   }
+  return results
 }

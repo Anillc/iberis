@@ -3,8 +3,9 @@ export * from './grammar'
 
 const g = new Grammar('S')
 g.p('S').n('A')
+g.p('A').n('B')
+g.p('B').n('A')
 g.p('A').t('t')
-g.p('A')
 
 const stack = ['t']
 
