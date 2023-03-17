@@ -37,22 +37,6 @@ class ItemSet {
   }
 }
 
-class Cache<K, V> {
-  map = new Map<K, V>()
-  get(key: K, create?: (key: K) => V) {
-    let value = this.map.get(key)
-    if (!value && create) {
-      value = create(key)
-      this.map.set(key, value)
-    }
-    return value
-  }
-}
-
-function clone<T>(origin: T): T {
-  return structuredClone(origin)
-}
-
 export function parse(grammar: Grammar, inputter: Inputter) {
   const results: Node[] = []
   const sets: ItemSet[] = [new ItemSet()]

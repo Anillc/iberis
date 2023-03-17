@@ -1,4 +1,4 @@
-import { parse, Texter } from './parse'
+import { parse, Inputter, Node, Branch } from './parse'
 
 export enum TokenKind {
   Term, NonTerm
@@ -18,6 +18,7 @@ export type Token = Term | NonTerm
 
 export class Productor {
   tokens: Token[] = []
+  isAccept = false
   constructor(public name: string, public id: number) {}
   t = this.term
   n = this.nonterm
@@ -35,16 +36,20 @@ export class Productor {
     })
     return this
   }
+  accept() {
+    this.isAccept = true
+  }
 }
 
 export class Grammar extends Map<string, Productor[]> {
   productorCount = 0
-  nullableMap: Map<string, Set<Productor>>
+  nullableMap: Map<string, Node[]>
   constructor(public entry: string) {
     super()
   }
   p = this.productor
   productor(name: string) {
+    this.nullableMap = null
     let productors = this.get(name)
     if (!productors) {
       productors = []
@@ -56,44 +61,75 @@ export class Grammar extends Map<string, Productor[]> {
   }
   nullable(name: string) {
     if (!this.nullableMap) {
-      const productors = [...this.values()].flat()
-      const map = new Map<string, Set<Productor>>
-      productors.forEach(productor => map.set(productor.name, new Set()))
-      let updated = true
-      while (updated) {
-        updated = false
-        for (const productor of productors) {
-          const set = map.get(productor.name)
-          if (productor.tokens.length === 0) {
-            if (!set.has(productor)) {
-              set.add(productor)
-              updated = true
-            }
-            continue
-          }
-          let nullable = true
-          for (const token of productor.tokens) {
-            if (token.kind === TokenKind.Term) {
-              nullable = false
-              break
-            } else {
-              if (map.get(token.token).size === 0) {
-                nullable = false
-                break
-              }
-            }
-          }
-          if (nullable && !set.has(productor)) {
-            set.add(productor)
-            continue
-          }
-        }
-      }
+      const map = nullableMap(this)
       this.nullableMap = map
     }
     return this.nullableMap.get(name)
   }
-  parse(texter: Texter) {
-    return parse(this, texter)
+  parse(inputter: Inputter) {
+    return parse(this, inputter)
   }
+}
+
+function cartesian<T>(factors: T[][]): T[][] {
+  if (factors.length === 0) return []
+  let result = factors[0].map(factor => [factor])
+  for (let i = 1; i < factors.length; i++) {
+    const next = []
+    for (const x of result) {
+      for (const y of factors[i]) {
+        next.push([...x, y])
+      }
+    }
+    result = next
+  }
+  return result
+}
+
+export function nullableMap(grammar: Grammar) {
+  const productors = [...grammar.values()].flat()
+  const map = new Map<string, Set<Productor>>()
+  let updated = true
+  while (updated) {
+    updated = false
+    for (const productor of productors) {
+      let set = map.get(productor.name)
+      if (!set) {
+        set = new Set()
+        map.set(productor.name, set)
+      } else if (set.has(productor)) {
+        continue
+      }
+      if (productor.tokens.length === 0) {
+        set.add(productor)
+        updated = true
+        continue
+      }
+      if (productor.tokens.some(token => token.kind === TokenKind.Term)) continue
+      const nonTermSets = productor.tokens.map(token => map.get(token.token))
+      if (nonTermSets.some(set => !set || set.size === 0)) continue
+      set.add(productor)
+      updated = true
+    }
+  }
+  const nullableMap = new Map<string, [Productor, Node][]>()
+  for (const [name, set] of map) {
+    if (set.size === 0) continue
+    nullableMap.set(name, [...set].map(productor => [productor, {} as Node]))
+  }
+  for (const [name, nodes] of nullableMap) {
+    for (const [productor, node] of nodes) {
+      node.name = name
+      const tokens = productor.tokens.map(token => nullableMap.get(token.token))
+      node.branches = cartesian(tokens).map(zip => ({
+        branch: zip[0][0],
+        nodes: zip.map(([, node]) => node)
+      }))
+    }
+  }
+  const result =  new Map<string, Node[]>()
+  for (const [name, nodes] of nullableMap) {
+    result.set(name, nodes.map(([, node]) => node))
+  }
+  return result
 }
