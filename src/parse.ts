@@ -125,7 +125,7 @@ export function parse(grammar: Grammar, inputter: Inputter) {
             })
           }
           const nullableNodes = grammar.nullable(token.token)
-          if (nullableNodes.length !== 0) {
+          if (nullableNodes && nullableNodes.length !== 0) {
             const newBranches: Branch[] = []
             for (const nullableNode of nullableNodes) {
               for (const branch of item.node.branches) {

@@ -1,4 +1,4 @@
-import { parse, Inputter, Node, Branch } from './parse'
+import { parse, Inputter, Node } from './parse'
 
 export enum TokenKind {
   Term, NonTerm
@@ -127,7 +127,7 @@ function nullableMap(grammar: Grammar) {
       } else {
         const tokens = productor.tokens.map(token => nullableMap.get(token.token))
         node.branches = cartesian(tokens).map(zip => ({
-          branch: zip[0][0],
+          branch: productor,
           nodes: zip.map(([, node]) => node)
         }))
       }
