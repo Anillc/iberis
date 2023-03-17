@@ -1,19 +1,19 @@
 import { Grammar, Productor, TokenKind } from './grammar'
 
-export interface Text {
+export interface Input {
   term: string
 }
 
-export type Texter = (type: string) => Text
+export type Inputter = () => Input
 
 export interface Branch {
   branch: Productor
-  node: Node
+  nodes: (Input | Node)[]
 }
 
 export interface Node {
   name: string
-  nodes: (Text | Branch[])[]
+  branches: Branch[]
 }
 
 interface Item {
@@ -28,12 +28,12 @@ class ItemSet {
   items: Item[] = []
   add(item: Item) {
     const id = `${item.productor.id}:${item.point}:${item.origin}`
-    if (this.map.get(id)) {
-      return false
+    const existed = this.map.get(id)
+    if (existed) {
+      return
     }
     this.map.set(id, item)
     this.items.push(item)
-    return true
   }
 }
 
@@ -49,8 +49,12 @@ class Cache<K, V> {
   }
 }
 
-export function parse(grammar: Grammar, texter: Texter) {
-  const results: Branch[] = []
+function clone<T>(origin: T): T {
+  return structuredClone(origin)
+}
+
+export function parse(grammar: Grammar, inputter: Inputter) {
+  const results: Node[] = []
   const sets: ItemSet[] = [new ItemSet()]
   const entries = grammar.get(grammar.entry)
   entries.forEach(productor => {
@@ -60,23 +64,23 @@ export function parse(grammar: Grammar, texter: Texter) {
       origin: 0,
       node: {
         name: productor.name,
-        nodes: [],
+        branches: [{
+          branch: productor,
+          nodes: [],
+        }],
       },
     })
   })
 
   for (let i = 0; i < sets.length; i++) {
+    let input: Input
     const set = sets[i]
-    const textCache = new Cache<string, Text>()
     for (let j = 0; j < set.items.length; j++) {
       const item = set.items[j]
       if (item.productor.tokens.length === item.point) {
         // compete
-        if (item.productor.name === grammar.entry) {
-          results.push({
-            branch: item.productor,
-            node: item.node,
-          } satisfies Branch)
+        if (item.productor.name === grammar.entry && item.productor.isAccept) {
+          results.push(item.node)
         }
         // length of items may change in this loop
         const origins = sets[item.origin].items
@@ -86,38 +90,37 @@ export function parse(grammar: Grammar, texter: Texter) {
           if (origin.productor.tokens[origin.point]?.token !== item.productor.name) {
             continue
           }
-          const nextNode: Node = {
-            name: origin.node.name,
-            nodes: [...origin.node.nodes],
-          }
-          const branches = (nextNode.nodes[origin.point] ||= []) as Branch[]
-          branches.push({
-            branch: item.productor,
-            node: item.node,
-          })
           set.add({
             productor: origin.productor,
             point: origin.point + 1,
             origin: origin.origin,
-            node: nextNode,
+            node: {
+              name: origin.node.name,
+              branches: origin.node.branches.map(branch => ({
+                branch: branch.branch,
+                nodes: branch.nodes.concat(item.node),
+              }))
+            },
           })
         }
       } else {
         const token = item.productor.tokens[item.point]
         if (token.kind === TokenKind.Term) {
           // scan
-          const text = textCache.get(token.token, texter)
-          if (!text) continue
+          input ||= inputter()
+          if (!input || input.term !== token.token) continue
           const nextSet = (sets[i + 1] ||= new ItemSet())
-          const nextNode: Node = {
-            name: item.node.name,
-            nodes: [...item.node.nodes, text],
-          }
           nextSet.add({
             productor: item.productor,
             point: item.point + 1,
             origin: item.origin,
-            node: nextNode,
+            node: {
+              name: item.node.name,
+              branches: item.node.branches.map(branch => ({
+                branch: branch.branch,
+                nodes: branch.nodes.concat(input),
+              })),
+            },
           })
         } else {
           // predicate
@@ -129,24 +132,21 @@ export function parse(grammar: Grammar, texter: Texter) {
               origin: i,
               node: {
                 name: productor.name,
-                nodes: [],
+                // create new branch
+                branches: [{
+                  branch: productor,
+                  nodes: [],
+                }],
               },
             })
           })
-          const nullables = grammar.nullable(token.token)
-          if (nullables.size !== 0) {
-            // This branch will be added in the predications,
-            // so we don't need to create a branch now.
-            set.add({
-              productor: item.productor,
-              point: item.point + 1,
-              origin: item.origin,
-              node: {
-                name: item.node.name,
-                nodes: [...item.node.nodes],
-              },
-            })
-          }
+          // if (grammar.nullable(token.token).size !== 0) {
+          //   set.add({
+          //     productor: item.productor,
+          //     point: item.point + 1,
+          //     origin: item.origin,
+          //   })
+          // }
         }
       }
     }
