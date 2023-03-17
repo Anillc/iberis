@@ -72,7 +72,6 @@ export class Grammar extends Map<string, Productor[]> {
 }
 
 function cartesian<T>(factors: T[][]): T[][] {
-  if (factors.length === 0) return []
   let result = factors[0].map(factor => [factor])
   for (let i = 1; i < factors.length; i++) {
     const next = []
@@ -86,7 +85,7 @@ function cartesian<T>(factors: T[][]): T[][] {
   return result
 }
 
-export function nullableMap(grammar: Grammar) {
+function nullableMap(grammar: Grammar) {
   const productors = [...grammar.values()].flat()
   const map = new Map<string, Set<Productor>>()
   let updated = true
@@ -120,11 +119,18 @@ export function nullableMap(grammar: Grammar) {
   for (const [name, nodes] of nullableMap) {
     for (const [productor, node] of nodes) {
       node.name = name
-      const tokens = productor.tokens.map(token => nullableMap.get(token.token))
-      node.branches = cartesian(tokens).map(zip => ({
-        branch: zip[0][0],
-        nodes: zip.map(([, node]) => node)
-      }))
+      if (productor.tokens.length === 0) {
+        node.branches = [{
+          branch: productor,
+          nodes: [],
+        }]
+      } else {
+        const tokens = productor.tokens.map(token => nullableMap.get(token.token))
+        node.branches = cartesian(tokens).map(zip => ({
+          branch: zip[0][0],
+          nodes: zip.map(([, node]) => node)
+        }))
+      }
     }
   }
   const result =  new Map<string, Node[]>()

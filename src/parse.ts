@@ -109,7 +109,7 @@ export function parse(grammar: Grammar, inputter: Inputter) {
         } else {
           // predicate
           const predications = grammar.get(token.token)
-          predications.forEach(productor => {
+          for (const productor of predications) {
             set.add({
               productor,
               point: 0,
@@ -123,14 +123,28 @@ export function parse(grammar: Grammar, inputter: Inputter) {
                 }],
               },
             })
-          })
-          // if (grammar.nullable(token.token).size !== 0) {
-          //   set.add({
-          //     productor: item.productor,
-          //     point: item.point + 1,
-          //     origin: item.origin,
-          //   })
-          // }
+          }
+          const nullableNodes = grammar.nullable(token.token)
+          if (nullableNodes.length !== 0) {
+            const newBranches: Branch[] = []
+            for (const nullableNode of nullableNodes) {
+              for (const branch of item.node.branches) {
+                newBranches.push({
+                  branch: branch.branch,
+                  nodes: branch.nodes.concat(nullableNode),
+                })
+              }
+            }
+            set.add({
+              productor: item.productor,
+              point: item.point + 1,
+              origin: item.origin,
+              node: {
+                name: item.node.name,
+                branches: newBranches,
+              },
+            })
+          }
         }
       }
     }
