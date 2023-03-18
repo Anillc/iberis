@@ -6,14 +6,9 @@ export interface Input {
 
 export type Inputter = () => Input
 
-export interface Branch {
-  branch: Productor
-  nodes: (Input | Node)[]
-}
-
 export interface Node {
-  name: string
-  branches: Branch[]
+  productor: Productor
+  branches: (Input | Node)[][]
 }
 
 interface Item {
@@ -47,11 +42,8 @@ export function parse(grammar: Grammar, inputter: Inputter) {
       point: 0,
       origin: 0,
       node: {
-        name: productor.name,
-        branches: [{
-          branch: productor,
-          nodes: [],
-        }],
+        productor,
+        branches: [[]],
       },
     })
   })
@@ -79,11 +71,8 @@ export function parse(grammar: Grammar, inputter: Inputter) {
             point: origin.point + 1,
             origin: origin.origin,
             node: {
-              name: origin.node.name,
-              branches: origin.node.branches.map(branch => ({
-                branch: branch.branch,
-                nodes: branch.nodes.concat(item.node),
-              }))
+              productor: origin.productor,
+              branches: origin.node.branches.map(branch => branch.concat(item.node)),
             },
           })
         }
@@ -99,11 +88,8 @@ export function parse(grammar: Grammar, inputter: Inputter) {
             point: item.point + 1,
             origin: item.origin,
             node: {
-              name: item.node.name,
-              branches: item.node.branches.map(branch => ({
-                branch: branch.branch,
-                nodes: branch.nodes.concat(input),
-              })),
+              productor: item.productor,
+              branches: item.node.branches.map(branch => branch.concat(input)),
             },
           })
         } else {
@@ -115,24 +101,18 @@ export function parse(grammar: Grammar, inputter: Inputter) {
               point: 0,
               origin: i,
               node: {
-                name: productor.name,
+                productor,
                 // create new branch
-                branches: [{
-                  branch: productor,
-                  nodes: [],
-                }],
+                branches: [[]],
               },
             })
           }
           const nullableNodes = grammar.nullable(token.token)
           if (nullableNodes && nullableNodes.length !== 0) {
-            const newBranches: Branch[] = []
+            const newBranches: (Input | Node)[][] = []
             for (const nullableNode of nullableNodes) {
               for (const branch of item.node.branches) {
-                newBranches.push({
-                  branch: branch.branch,
-                  nodes: branch.nodes.concat(nullableNode),
-                })
+                newBranches.push(branch.concat(nullableNode))
               }
             }
             set.add({
@@ -140,7 +120,7 @@ export function parse(grammar: Grammar, inputter: Inputter) {
               point: item.point + 1,
               origin: item.origin,
               node: {
-                name: item.node.name,
+                productor: item.productor,
                 branches: newBranches,
               },
             })

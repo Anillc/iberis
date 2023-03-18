@@ -87,15 +87,15 @@ function cartesian<T>(factors: T[][]): T[][] {
 
 function nullableMap(grammar: Grammar) {
   const productors = [...grammar.values()].flat()
-  const map = new Map<string, Set<Productor>>()
+  const nullableProductors = new Map<string, Set<Productor>>()
   let updated = true
   while (updated) {
     updated = false
     for (const productor of productors) {
-      let set = map.get(productor.name)
+      let set = nullableProductors.get(productor.name)
       if (!set) {
         set = new Set()
-        map.set(productor.name, set)
+        nullableProductors.set(productor.name, set)
       } else if (set.has(productor)) {
         continue
       }
@@ -105,37 +105,26 @@ function nullableMap(grammar: Grammar) {
         continue
       }
       if (productor.tokens.some(token => token.kind === TokenKind.Term)) continue
-      const nonTermSets = productor.tokens.map(token => map.get(token.token))
+      const nonTermSets = productor.tokens.map(token => nullableProductors.get(token.token))
       if (nonTermSets.some(set => !set || set.size === 0)) continue
       set.add(productor)
       updated = true
     }
   }
-  const nullableMap = new Map<string, [Productor, Node][]>()
-  for (const [name, set] of map) {
+  const nullableMap = new Map<string, Node[]>()
+  for (const [name, set] of nullableProductors) {
     if (set.size === 0) continue
-    nullableMap.set(name, [...set].map(productor => [productor, {} as Node]))
+    nullableMap.set(name, [...set].map(productor => ({ productor, branches: null })))
   }
-  for (const [name, nodes] of nullableMap) {
-    for (const [productor, node] of nodes) {
-      node.name = name
-      if (productor.tokens.length === 0) {
-        node.branches = [{
-          branch: productor,
-          nodes: [],
-        }]
+  for (const nodes of nullableMap.values()) {
+    for (const node of nodes) {
+      if (node.productor.tokens.length === 0) {
+        node.branches = [[]]
       } else {
-        const tokens = productor.tokens.map(token => nullableMap.get(token.token))
-        node.branches = cartesian(tokens).map(zip => ({
-          branch: productor,
-          nodes: zip.map(([, node]) => node)
-        }))
+        const tokens = node.productor.tokens.map(token => nullableMap.get(token.token))
+        node.branches = cartesian(tokens)
       }
     }
   }
-  const result =  new Map<string, Node[]>()
-  for (const [name, nodes] of nullableMap) {
-    result.set(name, nodes.map(([, node]) => node))
-  }
-  return result
+  return nullableMap
 }
