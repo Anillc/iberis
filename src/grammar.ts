@@ -1,4 +1,4 @@
-import { parse, Inputter, Node } from './parse'
+import { parse, Inputter } from './parse'
 import { nullableMap } from './utils'
 
 export enum TokenKind {
@@ -44,7 +44,7 @@ export class Productor {
 
 export class Grammar extends Map<string, Productor[]> {
   productorCount = 0
-  nullableMap: Map<string, Node[]>
+  nullableMap: Map<string, Set<Productor>>
   constructor(public entry: string) {
     super()
   }

@@ -1,13 +1,16 @@
 import { Grammar, Productor, TokenKind } from './grammar'
 
+export type Inputter = () => Input
+
 export interface Input {
   term: string
+  next?: number
 }
-
-export type Inputter = () => Input
 
 export interface Node {
   productor: Productor
+  start: number
+  next: number
   branches: (Input | Node)[][]
 }
 
@@ -15,7 +18,6 @@ interface Item {
   productor: Productor
   point: number
   origin: number
-  node: Node
 }
 
 class ItemSet {
@@ -33,7 +35,8 @@ class ItemSet {
 }
 
 export function parse(grammar: Grammar, inputter: Inputter) {
-  const results: Node[] = []
+  const inputs: Input[] = []
+
   const sets: ItemSet[] = [new ItemSet()]
   const entries = grammar.get(grammar.entry)
   entries.forEach(productor => {
@@ -41,10 +44,6 @@ export function parse(grammar: Grammar, inputter: Inputter) {
       productor,
       point: 0,
       origin: 0,
-      node: {
-        productor,
-        branches: [[]],
-      },
     })
   })
 
@@ -55,9 +54,6 @@ export function parse(grammar: Grammar, inputter: Inputter) {
       const item = set.items[j]
       if (item.productor.tokens.length === item.point) {
         // compete
-        if (item.productor.name === grammar.entry && item.productor.isAccept) {
-          results.push(item.node)
-        }
         // length of items may change in this loop
         const origins = sets[item.origin].items
         const len = origins.length
@@ -70,27 +66,25 @@ export function parse(grammar: Grammar, inputter: Inputter) {
             productor: origin.productor,
             point: origin.point + 1,
             origin: origin.origin,
-            node: {
-              productor: origin.productor,
-              branches: origin.node.branches.map(branch => branch.concat(item.node)),
-            },
           })
         }
       } else {
         const token = item.productor.tokens[item.point]
         if (token.kind === TokenKind.Term) {
           // scan
-          input ||= inputter()
+          if (!input) {
+            input = inputter()
+            if (input) {
+              input.next = inputs.length + 1
+              inputs.push(input)
+            }
+          }
           if (!input || input.term !== token.token) continue
           const nextSet = (sets[i + 1] ||= new ItemSet())
           nextSet.add({
             productor: item.productor,
             point: item.point + 1,
             origin: item.origin,
-            node: {
-              productor: item.productor,
-              branches: item.node.branches.map(branch => branch.concat(input)),
-            },
           })
         } else {
           // predicate
@@ -100,34 +94,95 @@ export function parse(grammar: Grammar, inputter: Inputter) {
               productor,
               point: 0,
               origin: i,
-              node: {
-                productor,
-                // create new branch
-                branches: [[]],
-              },
             })
           }
           const nullableNodes = grammar.nullable(token.token)
-          if (nullableNodes && nullableNodes.length !== 0) {
-            const newBranches: (Input | Node)[][] = []
-            for (const nullableNode of nullableNodes) {
-              for (const branch of item.node.branches) {
-                newBranches.push(branch.concat(nullableNode))
-              }
-            }
+          if (nullableNodes && nullableNodes.size !== 0) {
             set.add({
               productor: item.productor,
               point: item.point + 1,
               origin: item.origin,
-              node: {
-                productor: item.productor,
-                branches: newBranches,
-              },
             })
           }
         }
       }
     }
   }
-  return results
+
+  const transposed: Set<Productor>[][] = []
+  for (const [end, set] of sets.entries()) {
+    for (const item of set.items) {
+      if (item.productor.tokens.length !== item.point) continue
+      const starts = transposed[item.origin] ||= []
+      const productors = starts[end] ||= new Set()
+      productors.add(item.productor)
+    }
+  }
+
+  function search(
+    name: string,
+    start: number,
+    searched: Map<string, Map<number, Node[]>>,
+  ): Node[] {
+    let startMap = searched.get(name)
+    if (!startMap) {
+      startMap = new Map()
+      searched.set(name, startMap)
+    }
+    const cached = startMap.get(start)
+    if (cached) return cached
+
+    const results: Node[] = []
+    startMap.set(start, results)
+    for (const [next, set] of transposed[start].entries()) {
+      if (!set) continue
+      for (const productor of set) {
+        if (productor.name !== name) continue
+        results.push({
+          productor,
+          start, next,
+          branches: null,
+        })
+      }
+    }
+    for (const node of results) {
+      // number for current position
+      let branches: (Input | Node)[][] = [[]]
+      for (const token of node.productor.tokens) {
+        if (token.kind === TokenKind.Term) {
+          const newBranches: (Input | Node)[][] = []
+          for (const branch of branches) {
+            const branchNext = branch.at(-1)?.next || start
+            if (branchNext + 1 > node.next || inputs[branchNext].term !== token.token) {
+              continue
+            }
+            newBranches.push(branch.concat(inputs[branchNext]))
+          }
+          branches = newBranches
+        } else {
+          const newBranches: (Input | Node)[][] = []
+          for (const branch of branches) {
+            const nextNodes = search(token.token, branch.at(-1)?.next || start, searched)
+            for (const next of nextNodes) {
+              if (next.next > node.next) continue
+              newBranches.push(branch.concat(next))
+            }
+          }
+          branches = newBranches
+        }
+      }
+      node.branches = branches.filter(branch => (branch.at(-1)?.next || start) === node.next)
+    }
+    let i = 0
+    while (i < results.length) {
+      if (results[i].branches.length === 0) {
+        results.splice(i, 1)
+      } else {
+        i++
+      }
+    }
+    return results
+  }
+  const nodes = search(grammar.entry, 0, new Map())
+  return nodes.filter(node => node.next === inputs.length)
 }
