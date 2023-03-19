@@ -149,7 +149,6 @@ export function parse(grammar: Grammar, inputter: Inputter) {
       }
     }
     for (const node of results) {
-      // number for current position
       let branches: (Input | Node)[][] = [[]]
       for (const token of node.productor.tokens) {
         if (token.kind === TokenKind.Term) {
