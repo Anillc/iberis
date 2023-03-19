@@ -5,6 +5,7 @@ export type Inputter = () => Input
 export interface Input {
   term: string
   next?: number
+  [key: string]: any
 }
 
 export interface Node {
@@ -134,7 +135,9 @@ export function parse(grammar: Grammar, inputter: Inputter) {
 
     const results: Node[] = []
     startMap.set(start, results)
-    for (const [next, set] of transposed[start].entries()) {
+    const starts = transposed[start]
+    if (!starts) return results
+    for (const [next, set] of starts.entries()) {
       if (!set) continue
       for (const productor of set) {
         if (productor.name !== name) continue

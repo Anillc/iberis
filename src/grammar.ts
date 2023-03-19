@@ -8,6 +8,7 @@ export enum TokenKind {
 export interface Term {
   kind: TokenKind.Term
   token: string
+  match?: string | RegExp
 }
 
 export interface NonTerm {
@@ -23,10 +24,12 @@ export class Productor {
   constructor(public name: string, public id: number) {}
   t = this.term
   n = this.nonterm
-  term(token: string) {
+  termId = 0
+  term(match: string | RegExp) {
     this.tokens.push({
       kind: TokenKind.Term,
-      token,
+      token: `__LEXER_${this.name}_${this.id}_${this.termId++}`,
+      match,
     })
     return this
   }
