@@ -1,4 +1,5 @@
 import { Grammar, NonTerm, Productor, Term, TokenKind } from './grammar'
+import { Input, Node } from './parse'
 
 export function nullableMap(grammar: Grammar) {
   const productors = [...grammar.values()].flat()
@@ -31,4 +32,8 @@ export function nullableMap(grammar: Grammar) {
 
 export function isTerm(token: Term | NonTerm): token is Term {
   return token.kind === TokenKind.Term
+}
+
+export function isNode(node: Input | Node): node is Node {
+  return !node['term']
 }

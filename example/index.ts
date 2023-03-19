@@ -1,4 +1,4 @@
-import { Grammar, Input, simpleLexer, Node, Productor, TokenKind } from '../src'
+import { isNode, simpleLexer, Grammar, Node, Productor, TokenKind } from '../src'
 import { toFile } from 'ts-graphviz/adapter'
 
 declare module '../src' {
@@ -11,22 +11,18 @@ declare module '../src' {
 }
 
 const g = new Grammar('sum')
-g.p('sum').n('sum').t(/[+-]/).n('product')
-g.p('sum').n('product')
-g.p('product').n('product').t(/[*/]/).n('factor')
-g.p('product').n('factor')
-g.p('factor').t('(').n('sum').t(')')
-g.p('factor').t(/\d+(\.\d+)?/)
-g.p('factor').t(/[a-zA-Z_][a-zA-Z0-9_]*/)
-g.p('factor').t(/"(?!\\").+"/)
+g.p`sum -> sum /[+-]/ product`
+g.p`sum -> product`
+g.p`product -> product /[*\/]/ factor`
+g.p`product -> factor`
+g.p`factor -> '(' sum ')'`
+g.p`factor -> /\d+(?:\.\d+)?/`
+g.p`factor -> /[a-zA-Z_][a-zA-Z0-9_]*/`
+g.p`factor -> /"(?:[^"\\]|\\.)*"/`
 
-const input = '"www" + 1 * (114 + 514) / 1919.810'
+const input = '"www" + xyz * (114 + 514) / 1919.810'
 
 const root = g.parse(simpleLexer(g, input))
-
-function isNode(node: Input | Node): node is Node {
-  return !node['term']
-}
 
 function productorToString(productor: Productor) {
   if (productor.name === 'root') {
@@ -86,11 +82,8 @@ function dot(node: Node, results: string[]): string {
 
 ;(async () => {
   const results = []
-  dot({
-    productor: { name: 'root' } as Productor,
-    start: 0,
-    next: 0,
-    branches: root.map(n => [n])
-  }, results)
+  for (const node of root) {
+    dot(node, results)
+  }
   await toFile(`digraph { ${results.join('; ')} }`, 'root.svg', {})
 })()

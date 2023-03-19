@@ -1,18 +1,12 @@
 import { Grammar } from './grammar'
 import { Input } from './parse'
-import { isTerm } from './utils'
 
 export function simpleLexer(grammar: Grammar, input: string) {
-  const terms = [...grammar.values()]
-    .map(productors => productors.map(productor => productor.tokens))
-    .flat(2).filter(isTerm)
-    .map(term => {
-      const match = typeof term.match === 'string'
-        ? term.match.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&')
-        : term.match.source
-      return `(?<${term.token}>(${match}))`
-    })
-  const regex = new RegExp(`^(${terms.join('|')})`)
+  const stringTerms = [...grammar.stringTerms.entries()]
+    .map(([match, token]) => `(?<${token}>(${match.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&')}))`)
+  const regexTerms = [...grammar.regexTerms.entries()]
+    .map(([match, token]) => `(?<${token}>(${match}))`)
+  const regex = new RegExp(`^(${stringTerms.concat(regexTerms).join('|')})`)
   const tokens: Input[] = []
   let rest = input
   while (true) {
