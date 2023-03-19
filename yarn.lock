@@ -82,6 +82,11 @@ make-error@^1.1.1:
   resolved "https://registry.yarnpkg.com/make-error/-/make-error-1.3.6.tgz#2eb2e37ea9b67c4891f684a1394799af484cf7a2"
   integrity sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==
 
+ts-graphviz@^1.5.5:
+  version "1.5.5"
+  resolved "https://registry.yarnpkg.com/ts-graphviz/-/ts-graphviz-1.5.5.tgz#b5e9079c18289fb36b6b53f3d81da96445c37514"
+  integrity sha512-abon0Tlcgvxcqr8x+p8QH1fTbR2R4cEXKGZfT4OJONZWah2YfqkmERb6hrr82omAc1IHwk5PlF8g4BS/ECYvwQ==
+
 ts-node@^10.9.1:
   version "10.9.1"
   resolved "https://registry.yarnpkg.com/ts-node/-/ts-node-10.9.1.tgz#e73de9102958af9e1f0b168a6ff320e25adcff4b"
