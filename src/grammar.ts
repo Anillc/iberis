@@ -21,7 +21,6 @@ export type Token = Term | NonTerm
 
 export class Productor {
   tokens: Token[] = []
-  isAccept = false
   constructor(
     public name: string,
     public id: number,
@@ -54,9 +53,6 @@ export class Productor {
       token,
     })
     return this
-  }
-  accept() {
-    this.isAccept = true
   }
 }
 
