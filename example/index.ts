@@ -1,4 +1,4 @@
-import { isNode, simpleLexer, Grammar, Node, Productor, TokenKind } from '../src'
+import { isNode, Grammar, Node, Productor, TokenKind } from '../src'
 import { toFile } from 'ts-graphviz/adapter'
 
 declare module '../src' {
@@ -11,18 +11,20 @@ declare module '../src' {
 }
 
 const g = new Grammar('sum')
-g.p`sum -> sum /[+-]/ product`
-g.p`sum -> product`
-g.p`product -> product /[*\/]/ factor`
-g.p`product -> factor`
-g.p`factor -> '(' sum ')'`
-g.p`factor -> /\d+(?:\.\d+)?/`
-g.p`factor -> /[a-zA-Z_][a-zA-Z0-9_]*/`
-g.p`factor -> /"(?:[^"\\]|\\.)*"/`
+g.p`
+  sum -> sum /[+-]/ product
+  sum -> product
+  product -> product /[*\/]/ factor
+  product -> factor
+  factor -> '(' sum ')'
+  factor -> /\d+(?:\.\d+)?/
+  factor -> /[a-zA-Z_][a-zA-Z0-9_]*/
+  factor -> /"(?:[^"\\]|\\.)*"/
+`
 
 const input = '"www" + xyz * (114 + 514) / 1919.810'
 
-const root = g.parse(simpleLexer(g, input))
+const root = g.parse(input)
 
 function productorToString(productor: Productor) {
   if (productor.name === 'root') {

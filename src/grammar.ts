@@ -80,7 +80,13 @@ export class Grammar extends Map<string, Productor[]> {
     const text = Array.isArray(input)
       ? String.raw(input as TemplateStringsArray)
       : input as string
-    return parseProductor(this, text)
+    const lines = text.split('\n')
+    let last: Productor
+    for (const line of lines) {
+      if (line.trim() === '') continue
+      last = parseProductor(this, line)
+    }
+    return last
   }
   nullable(name: string) {
     if (!this.nullableMap) {
@@ -89,8 +95,8 @@ export class Grammar extends Map<string, Productor[]> {
     }
     return this.nullableMap.get(name)
   }
-  parse(inputter: Inputter) {
-    return parse(this, inputter)
+  parse(input: string) {
+    return parse(this, simpleLexer(this, input))
   }
 }
 
@@ -106,7 +112,7 @@ const regex = productorGrammar.productor('token').term(/\/(?:[^\/\\]|\\.)*\//)
 productorGrammar.productor('id').term(/[a-zA-Z_][a-zA-Z0-9_]*/)
 
 function parseProductor(grammar: Grammar, input: string) {
-  const root = productorGrammar.parse(simpleLexer(productorGrammar, input))
+  const root = productorGrammar.parse(input)
   if (root.length !== 1) {
     throw new Error('failed to parse productor expression')
   }

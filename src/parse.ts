@@ -4,6 +4,7 @@ export type Inputter = () => Input
 
 export interface Input {
   term: string
+  text: string
   next?: number
   [key: string]: any
 }
