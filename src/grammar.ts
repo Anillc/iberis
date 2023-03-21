@@ -1,5 +1,5 @@
 import { simpleLexer } from './lexer'
-import { parse, Input, Inputter, Node } from './parse'
+import { parse, Input, Inputter, ParsingNode } from './parse'
 import { nullableMap } from './utils'
 
 export enum TokenKind {
@@ -117,24 +117,24 @@ function parseProductor(grammar: Grammar, input: string) {
     throw new Error('failed to parse productor expression')
   }
   const branch = root[0].branches[0]
-  const productor = grammar.productor(((branch[0] as Node).branches[0][0] as Input).text)
+  const productor = grammar.productor(((branch[0] as ParsingNode).branches[0][0] as Input).text)
   if (root[0].productor === empty) {
     return productor
   }
-  let tokens = branch[2] as Node
+  let tokens = branch[2] as ParsingNode
   while (tokens) {
-    let token: Node
+    let token: ParsingNode
     if (tokens.productor === tokens1) {
-      token = tokens.branches[0][1] as Node
-      tokens = tokens.branches[0][0] as Node
+      token = tokens.branches[0][1] as ParsingNode
+      tokens = tokens.branches[0][0] as ParsingNode
     } else if (tokens.productor === tokens2) {
-      token = tokens.branches[0][0] as Node
+      token = tokens.branches[0][0] as ParsingNode
       tokens = null
     } else {
       throw new Error('unknown productor')
     }
     if (token.productor === nonTerm) {
-      productor.nonterm(((token.branches[0][0] as Node).branches[0][0] as Input).text)
+      productor.nonterm(((token.branches[0][0] as ParsingNode).branches[0][0] as Input).text)
     } else if (token.productor === quote1) {
       let text: string = (token.branches[0][0] as Input).text
       text = text.substring(1, text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"')

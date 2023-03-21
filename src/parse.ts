@@ -9,11 +9,11 @@ export interface Input {
   [key: string]: any
 }
 
-export interface Node {
+export interface ParsingNode {
   productor: Productor
   start: number
   next: number
-  branches: (Input | Node)[][]
+  branches: (Input | ParsingNode)[][]
 }
 
 interface Item {
@@ -98,8 +98,8 @@ export function parse(grammar: Grammar, inputter: Inputter) {
               origin: i,
             })
           }
-          const nullableNodes = grammar.nullable(token.token)
-          if (nullableNodes && nullableNodes.size !== 0) {
+          const nullableParsingNodes = grammar.nullable(token.token)
+          if (nullableParsingNodes && nullableParsingNodes.size !== 0) {
             set.add({
               productor: item.productor,
               point: item.point + 1,
@@ -124,8 +124,8 @@ export function parse(grammar: Grammar, inputter: Inputter) {
   function search(
     name: string,
     start: number,
-    searched: Map<string, Map<number, Node[]>>,
-  ): Node[] {
+    searched: Map<string, Map<number, ParsingNode[]>>,
+  ): ParsingNode[] {
     let startMap = searched.get(name)
     if (!startMap) {
       startMap = new Map()
@@ -134,7 +134,7 @@ export function parse(grammar: Grammar, inputter: Inputter) {
     const cached = startMap.get(start)
     if (cached) return cached
 
-    const results: Node[] = []
+    const results: ParsingNode[] = []
     startMap.set(start, results)
     const starts = transposed[start]
     if (!starts) return results
@@ -150,10 +150,10 @@ export function parse(grammar: Grammar, inputter: Inputter) {
       }
     }
     for (const node of results) {
-      let branches: (Input | Node)[][] = [[]]
+      let branches: (Input | ParsingNode)[][] = [[]]
       for (const token of node.productor.tokens) {
         if (token.kind === TokenKind.Term) {
-          const newBranches: (Input | Node)[][] = []
+          const newBranches: (Input | ParsingNode)[][] = []
           for (const branch of branches) {
             const branchNext = branch.at(-1)?.next || start
             if (branchNext + 1 > node.next || inputs[branchNext].term !== token.token) {
@@ -163,10 +163,10 @@ export function parse(grammar: Grammar, inputter: Inputter) {
           }
           branches = newBranches
         } else {
-          const newBranches: (Input | Node)[][] = []
+          const newBranches: (Input | ParsingNode)[][] = []
           for (const branch of branches) {
-            const nextNodes = search(token.token, branch.at(-1)?.next || start, searched)
-            for (const next of nextNodes) {
+            const nextParsingNodes = search(token.token, branch.at(-1)?.next || start, searched)
+            for (const next of nextParsingNodes) {
               if (next.next > node.next) continue
               newBranches.push(branch.concat(next))
             }

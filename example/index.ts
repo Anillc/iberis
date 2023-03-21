@@ -1,8 +1,8 @@
-import { isNode, Grammar, Node, Productor, TokenKind } from '../src'
+import { isParsingNode, Grammar, ParsingNode, Productor, TokenKind } from '../src'
 import { toFile } from 'ts-graphviz/adapter'
 
 declare module '../src' {
-  interface Node {
+  interface ParsingNode {
     print?: string
   }
   interface Input {
@@ -44,7 +44,7 @@ function productorToString(productor: Productor) {
 }
 
 let id = 0
-function dot(node: Node, results: string[]): string {
+function dot(node: ParsingNode, results: string[]): string {
   function pushEdge(a: string, b: string) {
     results.push(`"${a.replaceAll('"', '\\"')}" -> "${b.replaceAll('"', '\\"')}"`)
   }
@@ -68,7 +68,7 @@ function dot(node: Node, results: string[]): string {
       pushEdge(node.print, fork)
     }
     for (const next of branch) {
-      if (isNode(next)) {
+      if (isParsingNode(next)) {
         const name = dot(next, results)
         pushEdge(fork, name)
       } else {
