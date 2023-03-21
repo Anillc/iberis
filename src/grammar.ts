@@ -1,6 +1,6 @@
 import { simpleLexer } from './lexer'
 import { parse, Input, ParsingNode, Inputter } from './parse'
-import { isParsingNode, nullableMap } from './utils'
+import { accept, isParsingNode, nullableMap } from './utils'
 
 export enum TokenKind {
   Term, NonTerm
@@ -19,7 +19,7 @@ export interface NonTerm {
 
 export type Token = Term | NonTerm
 
-export class Productor {
+export class Productor<C = unknown, T extends unknown[] = []> {
   tokens: Token[] = []
   accept: (...args: any[]) => any
   choose: (node: ParsingNode) => (Input | ParsingNode)[]
@@ -31,7 +31,13 @@ export class Productor {
     this.accept = (...args) => args?.find(isParsingNode)
     this.choose = (node) => node.branches[0]
   }
-  term(match: string | RegExp) {
+  t(match: string | RegExp) {
+    return this.term(match)
+  }
+  n(token: string) {
+    return this.nonTerm(token)
+  }
+  term(match: string | RegExp): Productor<C, [...T, Input]> {
     let token: string
     if (typeof match === 'string') {
       token = this.grammar.stringTerms.get(match)
@@ -50,17 +56,17 @@ export class Productor {
       kind: TokenKind.Term,
       token, match,
     })
-    return this
+    return this as any
   }
-  nonterm(token: string) {
+  nonTerm(token: string): Productor<C, [...T, any]> {
     this.tokens.push({
       kind: TokenKind.NonTerm,
       token,
     })
-    return this
+    return this as any
   }
   bind(
-    accept?: (...args: any[]) => any,
+    accept?: (...args: [...T, C]) => any,
     choose?: (node: ParsingNode) => (Input | ParsingNode)[],
   ) {
     if (accept) this.accept = accept
@@ -68,7 +74,7 @@ export class Productor {
   }
 }
 
-export class Grammar extends Map<string, Productor[]> {
+export class Grammar<C = unknown> extends Map<string, Productor[]> {
   productorCount = 0
   termCount = 0
   stringTerms = new Map<string, string>()
@@ -77,18 +83,21 @@ export class Grammar extends Map<string, Productor[]> {
   constructor(public entry: string) {
     super()
   }
-  productor(name: string) {
+  p(name: string) {
+    return this.productor(name)
+  }
+  productor(name: string): Productor<C> {
     this.nullableMap = null
     let productors = this.get(name)
     if (!productors) {
       productors = []
       this.set(name, productors)
     }
-    const productor = new Productor(name, this.productorCount++, this)
+    const productor = new Productor<C>(name, this.productorCount++, this)
     productors.push(productor)
     return productor
   }
-  p(input: string | TemplateStringsArray) {
+  t(input: string | TemplateStringsArray): Productor<C, any[]> {
     const text = Array.isArray(input)
       ? String.raw(input as TemplateStringsArray)
       : input as string
@@ -96,9 +105,9 @@ export class Grammar extends Map<string, Productor[]> {
     let last: Productor
     for (const line of lines) {
       if (line.trim() === '') continue
-      last = parseProductor(this, line)
+      last = parseTemplate(this, line)
     }
-    return last
+    return last as any
   }
   nullable(name: string) {
     if (!this.nullableMap) {
@@ -112,57 +121,44 @@ export class Grammar extends Map<string, Productor[]> {
   }
 }
 
-const productorGrammar = new Grammar('productor')
-productorGrammar.productor('productor').nonterm('id').term('->').nonterm('tokens')
-const empty = productorGrammar.productor('productor').nonterm('id').term('->')
-const tokens1 = productorGrammar.productor('tokens').nonterm('tokens').nonterm('token')
-const tokens2 = productorGrammar.productor('tokens').nonterm('token')
-const nonTerm = productorGrammar.productor('token').nonterm('id')
-const quote1 = productorGrammar.productor('token').term(/"(?:[^"\\]|\\.)*"/)
-const quote2 = productorGrammar.productor('token').term(/'(?:[^'\\]|\\.)*'/)
-const regex = productorGrammar.productor('token').term(/\/(?:[^\/\\]|\\.)*\//)
-productorGrammar.productor('id').term(/[a-zA-Z_][a-zA-Z0-9_]*/)
+const template = new Grammar<Grammar>('productor')
+template.p('productor').n('id').t('->').n('tokens').bind((id, _, tokens, grammar) => {
+  const productor = grammar.productor(id)
+  for (const token of tokens) {
+    if (token.type === 'term') {
+      productor.t(token.match)
+    } else {
+      productor.n(token.name)
+    }
+  }
+  return productor
+})
+template.p('productor').n('id').t('->').bind((id, _, grammar) => grammar.productor(id))
+template.p('tokens').n('tokens').n('token').bind((tokens, token) => tokens.concat(token))
+template.p('tokens').n('token').bind((token) => [token])
+template.p('token').nonTerm('id').bind((name) => ({ type: 'nonTerm', name }))
+template.p('token').t(/"(?:[^"\\]|\\.)*"/).bind(({ text }) => {
+  const term = text.substring(1, text.length - 1)
+    .replaceAll('\\\\', '\\')
+    .replaceAll('\\"', '"')
+  return { type: 'term', match: term }
+})
+template.p('token').t(/'(?:[^'\\]|\\.)*'/).bind(({ text }) => {
+  const term = text.substring(1, text.length - 1)
+    .replaceAll('\\\\', '\\')
+    .replaceAll("\\'", "'")
+  return { type: 'term', match: term }
+})
+template.p('token').t(/\/(?:[^\/\\]|\\.)*\//).bind(({ text }) => {
+  const regex = text.substring(1, text.length - 1)
+  return { type: 'term', match: new RegExp(regex) }
+})
+template.p('id').t(/[a-zA-Z_][a-zA-Z0-9_]*/).bind(({ text }) => text)
 
-function parseProductor(grammar: Grammar, input: string) {
-  const root = productorGrammar.parse(simpleLexer(productorGrammar, input))
+function parseTemplate(grammar: Grammar, input: string) {
+  const root = template.parse(simpleLexer(template, input))
   if (root.length !== 1) {
     throw new Error('failed to parse productor expression')
   }
-  const branch = root[0].branches[0]
-  const productor = grammar.productor(((branch[0] as ParsingNode).branches[0][0] as Input).text)
-  if (root[0].productor === empty) {
-    return productor
-  }
-  let tokens = branch[2] as ParsingNode
-  while (tokens) {
-    let token: ParsingNode
-    if (tokens.productor === tokens1) {
-      token = tokens.branches[0][1] as ParsingNode
-      tokens = tokens.branches[0][0] as ParsingNode
-    } else if (tokens.productor === tokens2) {
-      token = tokens.branches[0][0] as ParsingNode
-      tokens = null
-    } else {
-      throw new Error('unknown productor')
-    }
-    if (token.productor === nonTerm) {
-      productor.nonterm(((token.branches[0][0] as ParsingNode).branches[0][0] as Input).text)
-    } else if (token.productor === quote1) {
-      let text: string = (token.branches[0][0] as Input).text
-      text = text.substring(1, text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"')
-      productor.term(text)
-    } else if (token.productor === quote2) {
-      let text: string = (token.branches[0][0] as Input).text
-      text = text.substring(1, text.length - 1).replaceAll('\\\\', '\\').replaceAll("\\'", "'")
-      productor.term(text)
-    } else if (token.productor === regex) {
-      let text: string = (token.branches[0][0] as Input).text
-      text = text.substring(1, text.length - 1)
-      productor.term(new RegExp(text))
-    } else {
-      throw new Error('unknown productor')
-    }
-  }
-  productor.tokens.reverse()
-  return productor
+  return accept(root[0], grammar)
 }

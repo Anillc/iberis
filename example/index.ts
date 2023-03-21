@@ -11,13 +11,13 @@ declare module '../src' {
 }
 
 const g = new Grammar('sum')
-g.p`sum -> sum /[+-]/ product`.bind((x, op, y) => op.text === '+' ? x + y : x - y)
-g.p`sum -> product`
-g.p`product -> product /[*\/]/ factor`.bind((x, op, y) => op.text === '*' ? x * y : x / y)
-g.p`product -> factor`
-g.p`factor -> '(' sum ')'`
-g.p`factor -> /\d+(?:\.\d+)?/`.bind((num) => +num.text)
-g.p`factor -> /"(?:[^"\\]|\\.)*"/`.bind(str => str.text.substring(1, str.text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"'))
+g.t`sum -> sum /[+-]/ product`.bind((x, op, y) => op.text === '+' ? x + y : x - y)
+g.t`sum -> product`
+g.t`product -> product /[*\/]/ factor`.bind((x, op, y) => op.text === '*' ? x * y : x / y)
+g.t`product -> factor`
+g.t`factor -> '(' sum ')'`
+g.t`factor -> /\d+(?:\.\d+)?/`.bind((num) => +num.text)
+g.t`factor -> /"(?:[^"\\]|\\.)*"/`.bind((str) => str.text.substring(1, str.text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"'))
 
 const input = '233 * (114 + 514) / 1919.810 + "www"'
 

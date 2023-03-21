@@ -55,23 +55,24 @@ function choose(
   return true
 }
 
-function _accept(
+function _accept<T>(
   node: ParsingNode,
+  context: T,
   map: Map<ParsingNode, (Input | ParsingNode)[]>,
 ) {
   const branch = map.get(node)
   const args = []
   for (const node of branch) {
-    const arg = isParsingNode(node) ? _accept(node, map) : node
+    const arg = isParsingNode(node) ? _accept(node, context, map) : node
     args.push(arg)
   }
-  return node.productor.accept(...args)
+  return node.productor.accept(...args, context)
 }
 
-export function accept(node: ParsingNode) {
+export function accept<T>(node: ParsingNode, context?: T) {
   const map = new Map<ParsingNode, (Input | ParsingNode)[]>()
   if (!choose(node, map)) {
     return null
   }
-  return _accept(node, map)
+  return _accept(node, context, map)
 }
