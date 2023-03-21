@@ -1,6 +1,6 @@
 import { simpleLexer } from './lexer'
-import { parse, Input, Inputter, ParsingNode } from './parse'
-import { nullableMap } from './utils'
+import { parse, Input, ParsingNode, Inputter } from './parse'
+import { isParsingNode, nullableMap } from './utils'
 
 export enum TokenKind {
   Term, NonTerm
@@ -21,11 +21,16 @@ export type Token = Term | NonTerm
 
 export class Productor {
   tokens: Token[] = []
+  accept: (...args: any[]) => any
+  choose: (node: ParsingNode) => (Input | ParsingNode)[]
   constructor(
     public name: string,
     public id: number,
     public grammar: Grammar,
-  ) {}
+  ) {
+    this.accept = (...args) => args?.find(isParsingNode)
+    this.choose = (node) => node.branches[0]
+  }
   term(match: string | RegExp) {
     let token: string
     if (typeof match === 'string') {
@@ -53,6 +58,13 @@ export class Productor {
       token,
     })
     return this
+  }
+  bind(
+    accept?: (...args: any[]) => any,
+    choose?: (node: ParsingNode) => (Input | ParsingNode)[],
+  ) {
+    if (accept) this.accept = accept
+    if (choose) this.choose = choose
   }
 }
 
@@ -95,8 +107,8 @@ export class Grammar extends Map<string, Productor[]> {
     }
     return this.nullableMap.get(name)
   }
-  parse(input: string) {
-    return parse(this, simpleLexer(this, input))
+  parse(inputter: Inputter) {
+    return parse(this, inputter)
   }
 }
 
@@ -112,7 +124,7 @@ const regex = productorGrammar.productor('token').term(/\/(?:[^\/\\]|\\.)*\//)
 productorGrammar.productor('id').term(/[a-zA-Z_][a-zA-Z0-9_]*/)
 
 function parseProductor(grammar: Grammar, input: string) {
-  const root = productorGrammar.parse(input)
+  const root = productorGrammar.parse(simpleLexer(productorGrammar, input))
   if (root.length !== 1) {
     throw new Error('failed to parse productor expression')
   }

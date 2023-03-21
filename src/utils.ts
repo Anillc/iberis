@@ -37,3 +37,41 @@ export function isTerm(token: Term | NonTerm): token is Term {
 export function isParsingNode(node: Input | ParsingNode): node is ParsingNode {
   return !node['term']
 }
+
+function choose(
+  node: ParsingNode,
+  map: Map<ParsingNode, (Input | ParsingNode)[]>,
+) {
+  const chosen = map.get(node)
+  if (chosen || chosen === null) return true
+  map.set(node, null)
+  const branch = node.productor.choose(node)
+  if (!branch) return false
+  map.set(node, branch)
+  if (!branch.filter(isParsingNode).every(node => choose(node, map))) {
+    return false
+  }
+  map.set(node, branch)
+  return true
+}
+
+function _accept(
+  node: ParsingNode,
+  map: Map<ParsingNode, (Input | ParsingNode)[]>,
+) {
+  const branch = map.get(node)
+  const args = []
+  for (const node of branch) {
+    const arg = isParsingNode(node) ? _accept(node, map) : node
+    args.push(arg)
+  }
+  return node.productor.accept(...args)
+}
+
+export function accept(node: ParsingNode) {
+  const map = new Map<ParsingNode, (Input | ParsingNode)[]>()
+  if (!choose(node, map)) {
+    return null
+  }
+  return _accept(node, map)
+}

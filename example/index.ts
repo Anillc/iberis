@@ -1,4 +1,4 @@
-import { isParsingNode, Grammar, ParsingNode, Productor, TokenKind } from '../src'
+import { isParsingNode, Grammar, ParsingNode, Productor, TokenKind, accept, simpleLexer, Input } from '../src'
 import { toFile } from 'ts-graphviz/adapter'
 
 declare module '../src' {
@@ -11,20 +11,19 @@ declare module '../src' {
 }
 
 const g = new Grammar('sum')
-g.p`
-  sum -> sum /[+-]/ product
-  sum -> product
-  product -> product /[*\/]/ factor
-  product -> factor
-  factor -> '(' sum ')'
-  factor -> /\d+(?:\.\d+)?/
-  factor -> /[a-zA-Z_][a-zA-Z0-9_]*/
-  factor -> /"(?:[^"\\]|\\.)*"/
-`
+g.p`sum -> sum /[+-]/ product`.bind((x, op, y) => op.text === '+' ? x + y : x - y)
+g.p`sum -> product`
+g.p`product -> product /[*\/]/ factor`.bind((x, op, y) => op.text === '*' ? x * y : x / y)
+g.p`product -> factor`
+g.p`factor -> '(' sum ')'`
+g.p`factor -> /\d+(?:\.\d+)?/`.bind((num) => +num.text)
+g.p`factor -> /"(?:[^"\\]|\\.)*"/`.bind(str => str.text.substring(1, str.text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"'))
 
-const input = '"www" + xyz * (114 + 514) / 1919.810'
+const input = '233 * (114 + 514) / 1919.810 + "www"'
 
-const root = g.parse(input)
+const root = g.parse(simpleLexer(g, input))
+
+console.log(accept(root[0]));
 
 function productorToString(productor: Productor) {
   if (productor.name === 'root') {
