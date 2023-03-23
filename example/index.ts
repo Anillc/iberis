@@ -15,15 +15,13 @@ g.t`sum -> sum /[+-]/ product`.bind((x, op, y) => op.text === '+' ? x + y : x - 
 g.t`sum -> product`
 g.t`product -> product /[*\/]/ factor`.bind((x, op, y) => op.text === '*' ? x * y : x / y)
 g.t`product -> factor`
-g.t`factor -> '(' sum ')'`
+g.t`factor -> '(' sum ')'`.bind((_, sum) => sum)
 g.t`factor -> /\d+(?:\.\d+)?/`.bind((num) => +num.text)
 g.t`factor -> /"(?:[^"\\]|\\.)*"/`.bind((str) => str.text.substring(1, str.text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"'))
 
 const input = '233 * (114 + 514) / 1919.810 + "www"'
 
 const root = g.parse(simpleLexer(g, input))
-
-console.log(accept(root[0]));
 
 function productorToString(productor: Productor) {
   if (productor.name === 'root') {
@@ -82,6 +80,7 @@ function dot(node: ParsingNode, results: string[]): string {
 
 
 ;(async () => {
+  console.log(accept(root[0]))
   const results = []
   for (const node of root) {
     dot(node, results)

@@ -28,7 +28,7 @@ export class Productor<C = unknown, T extends unknown[] = []> {
     public id: number,
     public grammar: Grammar,
   ) {
-    this.accept = (...args) => args?.find(isParsingNode)
+    this.accept = (...args) => args[0]
     this.choose = (node) => node.branches[0]
   }
   t(match: string | RegExp) {
@@ -37,16 +37,15 @@ export class Productor<C = unknown, T extends unknown[] = []> {
   n(token: string) {
     return this.nonTerm(token)
   }
-  term(match: string | RegExp): Productor<C, [...T, Input]> {
-    let token: string
+  term(match: string | RegExp, token?: string): Productor<C, [...T, Input]> {
     if (typeof match === 'string') {
-      token = this.grammar.stringTerms.get(match)
+      token ||= this.grammar.stringTerms.get(match)
       if (!token) {
         token = `__LEXER_${this.grammar.termCount++}`
         this.grammar.stringTerms.set(match, token)
       }
     } else {
-      token = this.grammar.regexTerms.get(match.source)
+      token ||= this.grammar.regexTerms.get(match.source)
       if (!token) {
         token = `__LEXER_${this.grammar.termCount++}`
         this.grammar.regexTerms.set(match.source, token)

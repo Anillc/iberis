@@ -35,7 +35,7 @@ export function isTerm(token: Term | NonTerm): token is Term {
 }
 
 export function isParsingNode(node: Input | ParsingNode): node is ParsingNode {
-  return !node['term']
+  return !!node?.['productor']
 }
 
 function choose(
