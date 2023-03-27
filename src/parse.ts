@@ -6,14 +6,13 @@ export interface Input {
   term: string
   text: string
   next?: number
-  [key: string]: any
 }
 
-export interface ParsingNode {
+export interface ParseNode {
   productor: Productor
   start: number
   next: number
-  branches: (Input | ParsingNode)[][]
+  branches: (Input | ParseNode)[][]
 }
 
 interface Item {
@@ -124,8 +123,8 @@ export function parse(grammar: Grammar, inputter: Inputter) {
   function search(
     name: string,
     start: number,
-    searched: Map<string, Map<number, ParsingNode[]>>,
-  ): ParsingNode[] {
+    searched: Map<string, Map<number, ParseNode[]>>,
+  ): ParseNode[] {
     let startMap = searched.get(name)
     if (!startMap) {
       startMap = new Map()
@@ -134,7 +133,7 @@ export function parse(grammar: Grammar, inputter: Inputter) {
     const cached = startMap.get(start)
     if (cached) return cached
 
-    const results: ParsingNode[] = []
+    const results: ParseNode[] = []
     startMap.set(start, results)
     const starts = transposed[start]
     if (!starts) return results
@@ -150,10 +149,10 @@ export function parse(grammar: Grammar, inputter: Inputter) {
       }
     }
     for (const node of results) {
-      let branches: (Input | ParsingNode)[][] = [[]]
+      let branches: (Input | ParseNode)[][] = [[]]
       for (const token of node.productor.tokens) {
         if (token.kind === TokenKind.Term) {
-          const newBranches: (Input | ParsingNode)[][] = []
+          const newBranches: (Input | ParseNode)[][] = []
           for (const branch of branches) {
             const branchNext = branch.at(-1)?.next || start
             if (branchNext + 1 > node.next || inputs[branchNext].term !== token.token) {
@@ -163,7 +162,7 @@ export function parse(grammar: Grammar, inputter: Inputter) {
           }
           branches = newBranches
         } else {
-          const newBranches: (Input | ParsingNode)[][] = []
+          const newBranches: (Input | ParseNode)[][] = []
           for (const branch of branches) {
             const nextParsingNodes = search(token.token, branch.at(-1)?.next || start, searched)
             for (const next of nextParsingNodes) {

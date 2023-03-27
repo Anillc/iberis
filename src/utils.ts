@@ -1,5 +1,5 @@
 import { Grammar, NonTerm, Productor, Term, TokenKind } from './grammar'
-import { Input, ParsingNode } from './parse'
+import { Input, ParseNode } from './parse'
 
 export function nullableMap(grammar: Grammar) {
   const productors = [...grammar.values()].flat()
@@ -34,13 +34,13 @@ export function isTerm(token: Term | NonTerm): token is Term {
   return token.kind === TokenKind.Term
 }
 
-export function isParsingNode(node: Input | ParsingNode): node is ParsingNode {
+export function isParsingNode(node: Input | ParseNode): node is ParseNode {
   return !!node?.['productor']
 }
 
 function choose(
-  node: ParsingNode,
-  map: Map<ParsingNode, (Input | ParsingNode)[]>,
+  node: ParseNode,
+  map: Map<ParseNode, (Input | ParseNode)[]>,
 ) {
   const chosen = map.get(node)
   if (chosen || chosen === null) return true
@@ -56,9 +56,9 @@ function choose(
 }
 
 function _accept<T>(
-  node: ParsingNode,
+  node: ParseNode,
   context: T,
-  map: Map<ParsingNode, (Input | ParsingNode)[]>,
+  map: Map<ParseNode, (Input | ParseNode)[]>,
 ) {
   const branch = map.get(node)
   const args = []
@@ -69,8 +69,8 @@ function _accept<T>(
   return node.productor.accept(...args, context)
 }
 
-export function accept<T>(node: ParsingNode, context?: T) {
-  const map = new Map<ParsingNode, (Input | ParsingNode)[]>()
+export function accept<T>(node: ParseNode, context?: T) {
+  const map = new Map<ParseNode, (Input | ParseNode)[]>()
   if (!choose(node, map)) {
     return null
   }
