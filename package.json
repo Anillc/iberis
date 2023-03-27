@@ -1,10 +1,11 @@
 {
-  "name": "earley",
+  "name": "iberis",
   "version": "1.0.0",
   "main": "lib/index.js",
-  "repository": "https://github.com/Anillc/earley.git",
+  "repository": "https://github.com/Anillc/iberis.git",
   "author": "Anillc <void@anillc.cn>",
   "license": "MIT",
+  "files": ["lib"],
   "scripts": {
     "build": "tsc"
   },

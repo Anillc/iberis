@@ -11,13 +11,13 @@ declare module '../src' {
 }
 
 const [context, t] = template('sum')
-t`sum -> sum /[+-]/ product`.bind((x, op, y) => op.text === '+' ? x + y : x - y)
-t`sum -> product`
+t`sum     -> sum /[+-]/ product`    .bind((x, op, y) => op.text === '+' ? x + y : x - y)
+t`sum     -> product`
 t`product -> product /[*\/]/ factor`.bind((x, op, y) => op.text === '*' ? x * y : x / y)
 t`product -> factor`
-t`factor -> '(' sum ')'`.bind((_, sum) => sum)
-t`factor -> /\d+(?:\.\d+)?/`.bind((num) => +num.text)
-t`factor -> /"(?:[^"\\]|\\.)*"/`.bind((str) => str.text.substring(1, str.text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"'))
+t`factor  -> '(' sum ')'`           .bind((_, sum) => sum)
+t`factor  -> /\d+(?:\.\d+)?/`       .bind((num) => +num.text)
+t`factor  -> /"(?:[^"\\]|\\.)*"/`   .bind((str) => str.text.substring(1, str.text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"'))
 
 const input = '233 * (114 + 514) / 1919.810 + "www"'
 
