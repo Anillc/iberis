@@ -4,7 +4,7 @@ import { accept } from './utils'
 
 export interface ParseContext {
   grammar: Grammar
-  termId: number
+  termId?: number
   terms: Map<string, string | RegExp>
 }
 
@@ -95,20 +95,23 @@ export function template<C>(
 }
 
 export function lexer(context: ParseContext, input: string) {
-  const terms = [...context.terms.entries()].map(([name, value]) => {
+  const string: string[] = []
+  const regexp: string[] = []
+  for (const [name, value] of context.terms) {
     if (typeof value === 'string') {
-      return `(?<${name}>(${value.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&')}))`
+      string.push(`(?<${name}>(${value.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&')}))`)
     } else {
-      return `(?<${name}>(${value.source}))`
+      regexp.push(`(?<${name}>(${value.source}))`)
     }
-  })
-  const regex = new RegExp(`^(${terms.join('|')})`)
+  }
+  const stringRegex = new RegExp(`^(${string.join('|')})`)
+  const regexpRegex = new RegExp(`^(${regexp.join('|')})`)
   const tokens: Input[] = []
   let rest = input
   while (true) {
     rest = rest.trimStart()
     if (rest === '') break
-    const result = regex.exec(rest)
+    const result = stringRegex.exec(rest) || regexpRegex.exec(rest)
     if (!result) {
       throw new Error(`Unexpected input at ${input.length - rest.length}`)
     }

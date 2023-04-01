@@ -52,9 +52,10 @@ export class Productor<C = unknown, P extends unknown[] = []> {
   bind(
     accept?: (...args: [...P, C]) => any,
     choose?: (node: ParseNode) => (Input | ParseNode)[],
-  ) {
+  ): Productor<C, P> {
     if (accept) this.accept = accept
     if (choose) this.choose = choose
+    return this
   }
 }
 
