@@ -1,30 +1,30 @@
 import { Grammar, Productor, TokenKind } from './grammar'
 
-export type Inputter = () => Input
+export type Inputter<T> = (items: Item<T>[]) => [Item<T>[], Input<T>]
 
-export interface Input {
-  term: string
+export interface Input<T> {
+  token: T
   text: string
   next?: number
 }
 
-export interface ParseNode {
-  productor: Productor
+export interface ParseNode<T> {
+  productor: Productor<T>
   start: number
   next: number
-  branches: (Input | ParseNode)[][]
+  branches: (Input<T> | ParseNode<T>)[][]
 }
 
-interface Item {
-  productor: Productor
+export interface Item<T> {
+  productor: Productor<T>
   point: number
   origin: number
 }
 
-class ItemSet {
-  map = new Map<string, Item>()
-  items: Item[] = []
-  add(item: Item) {
+class ItemSet<T> {
+  map = new Map<string, Item<T>>()
+  items: Item<T>[] = []
+  add(item: Item<T>) {
     const id = `${item.productor.id}:${item.point}:${item.origin}`
     const existed = this.map.get(id)
     if (existed) {
@@ -35,10 +35,10 @@ class ItemSet {
   }
 }
 
-export function parse(grammar: Grammar, inputter: Inputter) {
-  const inputs: Input[] = []
+export function parse<T>(grammar: Grammar<T>, inputter: Inputter<T>) {
+  const inputs: Input<T>[] = []
 
-  const sets: ItemSet[] = [new ItemSet()]
+  const sets: ItemSet<T>[] = [new ItemSet()]
   const entries = grammar.get(grammar.entry)
   entries.forEach(productor => {
     sets[0].add({
@@ -49,7 +49,6 @@ export function parse(grammar: Grammar, inputter: Inputter) {
   })
 
   for (let i = 0; i < sets.length; i++) {
-    let input: Input
     const set = sets[i]
     for (let j = 0; j < set.items.length; j++) {
       const item = set.items[j]
@@ -71,23 +70,7 @@ export function parse(grammar: Grammar, inputter: Inputter) {
         }
       } else {
         const token = item.productor.tokens[item.point]
-        if (token.kind === TokenKind.Term) {
-          // scan
-          if (!input) {
-            input = inputter()
-            if (input) {
-              input.next = inputs.length + 1
-              inputs.push(input)
-            }
-          }
-          if (!input || input.term !== token.token) continue
-          const nextSet = (sets[i + 1] ||= new ItemSet())
-          nextSet.add({
-            productor: item.productor,
-            point: item.point + 1,
-            origin: item.origin,
-          })
-        } else {
+        if (token.kind === TokenKind.NonTerm) {
           // predicate
           const predications = grammar.get(token.token)
           for (const productor of predications) {
@@ -108,9 +91,27 @@ export function parse(grammar: Grammar, inputter: Inputter) {
         }
       }
     }
+    // scan
+    const termItems = set.items.filter(item => {
+      const token = item.productor.tokens[item.point]
+      return token && token.kind === TokenKind.Term
+    })
+    if (termItems.length === 0) break
+    const [nextItems, input] = inputter(termItems)
+    if (!input) break
+    input.next = inputs.length + 1
+    inputs.push(input)
+    const nextSet = sets[i + 1] = new ItemSet()
+    for (const item of nextItems) {
+      nextSet.add({
+        productor: item.productor,
+        point: item.point + 1,
+        origin: item.origin,
+      })
+    }
   }
 
-  const transposed: Set<Productor>[][] = []
+  const transposed: Set<Productor<T>>[][] = []
   for (const [end, set] of sets.entries()) {
     for (const item of set.items) {
       if (item.productor.tokens.length !== item.point) continue
@@ -123,8 +124,8 @@ export function parse(grammar: Grammar, inputter: Inputter) {
   function search(
     name: string,
     start: number,
-    searched: Map<string, Map<number, ParseNode[]>>,
-  ): ParseNode[] {
+    searched: Map<string, Map<number, ParseNode<T>[]>>,
+  ): ParseNode<T>[] {
     let startMap = searched.get(name)
     if (!startMap) {
       startMap = new Map()
@@ -133,7 +134,7 @@ export function parse(grammar: Grammar, inputter: Inputter) {
     const cached = startMap.get(start)
     if (cached) return cached
 
-    const results: ParseNode[] = []
+    const results: ParseNode<T>[] = []
     startMap.set(start, results)
     const starts = transposed[start]
     if (!starts) return results
@@ -149,20 +150,20 @@ export function parse(grammar: Grammar, inputter: Inputter) {
       }
     }
     for (const node of results) {
-      let branches: (Input | ParseNode)[][] = [[]]
+      let branches: (Input<T> | ParseNode<T>)[][] = [[]]
       for (const token of node.productor.tokens) {
         if (token.kind === TokenKind.Term) {
-          const newBranches: (Input | ParseNode)[][] = []
+          const newBranches: (Input<T> | ParseNode<T>)[][] = []
           for (const branch of branches) {
             const branchNext = branch.at(-1)?.next || start
-            if (branchNext + 1 > node.next || inputs[branchNext].term !== token.token) {
+            if (branchNext + 1 > node.next || inputs[branchNext].token !== token.token) {
               continue
             }
             newBranches.push(branch.concat(inputs[branchNext]))
           }
           branches = newBranches
         } else {
-          const newBranches: (Input | ParseNode)[][] = []
+          const newBranches: (Input<T> | ParseNode<T>)[][] = []
           for (const branch of branches) {
             const nextParsingNodes = search(token.token, branch.at(-1)?.next || start, searched)
             for (const next of nextParsingNodes) {

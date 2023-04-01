@@ -5,9 +5,9 @@ export enum TokenKind {
   Term, NonTerm
 }
 
-export interface Term {
+export interface Term<T> {
   kind: TokenKind.Term
-  token: string
+  token: T
 }
 
 export interface NonTerm {
@@ -15,12 +15,12 @@ export interface NonTerm {
   token: string
 }
 
-export type Token = Term | NonTerm
+export type Token<T> = Term<T> | NonTerm
 
-export class Productor<C = unknown, P extends unknown[] = []> {
-  tokens: Token[] = []
+export class Productor<T = unknown, C = unknown, P extends unknown[] = []> {
+  tokens: Token<T>[] = []
   accept: (...args: any[]) => any
-  choose: (node: ParseNode) => (Input | ParseNode)[]
+  choose: (node: ParseNode<T>) => (Input<T> | ParseNode<T>)[]
   constructor(
     public name: string,
     public id: number,
@@ -29,20 +29,20 @@ export class Productor<C = unknown, P extends unknown[] = []> {
     this.accept = (...args) => args[0]
     this.choose = (node) => node.branches[0]
   }
-  t(token: string) {
+  t(token: T) {
     return this.term(token)
   }
   n(token: string) {
     return this.nonTerm(token)
   }
-  term(token: string): Productor<C, [...P, Input]> {
+  term(token: T): Productor<T, C, [...P, Input<T>]> {
     this.tokens.push({
       kind: TokenKind.Term,
       token,
     })
     return this as any
   }
-  nonTerm(token: string): Productor<C, [...P, any]> {
+  nonTerm(token: string): Productor<T, C, [...P, any]> {
     this.tokens.push({
       kind: TokenKind.NonTerm,
       token,
@@ -51,15 +51,15 @@ export class Productor<C = unknown, P extends unknown[] = []> {
   }
   bind(
     accept?: (...args: [...P, C]) => any,
-    choose?: (node: ParseNode) => (Input | ParseNode)[],
-  ): Productor<C, P> {
+    choose?: (node: ParseNode<T>) => (Input<T> | ParseNode<T>)[],
+  ): Productor<T, C, P> {
     if (accept) this.accept = accept
     if (choose) this.choose = choose
     return this
   }
 }
 
-export class Grammar<C = unknown> extends Map<string, Productor<C>[]> {
+export class Grammar<T = unknown, C = unknown> extends Map<string, Productor<T, C>[]> {
   productorCount = 0
   nullableMap: Map<string, Set<Productor>>
   constructor(public entry: string) {
@@ -68,14 +68,14 @@ export class Grammar<C = unknown> extends Map<string, Productor<C>[]> {
   p(name: string) {
     return this.productor(name)
   }
-  productor(name: string): Productor<C> {
+  productor(name: string): Productor<T, C> {
     this.nullableMap = null
     let productors = this.get(name)
     if (!productors) {
       productors = []
       this.set(name, productors)
     }
-    const productor = new Productor<C>(name, this.productorCount++, this)
+    const productor = new Productor<T, C>(name, this.productorCount++, this)
     productors.push(productor)
     return productor
   }
@@ -86,7 +86,7 @@ export class Grammar<C = unknown> extends Map<string, Productor<C>[]> {
     }
     return this.nullableMap.get(name)
   }
-  parse(inputter: Inputter) {
+  parse(inputter: Inputter<T>) {
     return parse(this, inputter)
   }
 }

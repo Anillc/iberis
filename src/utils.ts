@@ -21,7 +21,7 @@ export function nullableMap(grammar: Grammar) {
         continue
       }
       if (productor.tokens.some(token => token.kind === TokenKind.Term)) continue
-      const nonTermSets = productor.tokens.map(token => map.get(token.token))
+      const nonTermSets = productor.tokens.map(token => map.get(token.token as string))
       if (nonTermSets.some(set => !set || set.size === 0)) continue
       set.add(productor)
       updated = true
@@ -30,17 +30,17 @@ export function nullableMap(grammar: Grammar) {
   return map
 }
 
-export function isTerm(token: Term | NonTerm): token is Term {
+export function isTerm<T>(token: Term<T> | NonTerm): token is Term<T> {
   return token.kind === TokenKind.Term
 }
 
-export function isParsingNode(node: Input | ParseNode): node is ParseNode {
+export function isParsingNode<T>(node: Input<T> | ParseNode<T>): node is ParseNode<T> {
   return !!node?.['productor']
 }
 
-function choose(
-  node: ParseNode,
-  map: Map<ParseNode, (Input | ParseNode)[]>,
+function choose<T>(
+  node: ParseNode<T>,
+  map: Map<ParseNode<T>, (Input<T> | ParseNode<T>)[]>,
 ) {
   const chosen = map.get(node)
   if (chosen || chosen === null) return true
@@ -55,10 +55,10 @@ function choose(
   return true
 }
 
-function _accept<T>(
-  node: ParseNode,
-  context: T,
-  map: Map<ParseNode, (Input | ParseNode)[]>,
+function _accept<T, C>(
+  node: ParseNode<T>,
+  context: C,
+  map: Map<ParseNode<T>, (Input<T> | ParseNode<T>)[]>,
 ) {
   const branch = map.get(node)
   const args = []
@@ -69,8 +69,8 @@ function _accept<T>(
   return node.productor.accept(...args, context)
 }
 
-export function accept<T>(node: ParseNode, context?: T) {
-  const map = new Map<ParseNode, (Input | ParseNode)[]>()
+export function accept<T, C>(node: ParseNode<T>, context?: C) {
+  const map = new Map<ParseNode<T>, (Input<T> | ParseNode<T>)[]>()
   if (!choose(node, map)) {
     return null
   }

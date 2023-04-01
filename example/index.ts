@@ -1,16 +1,17 @@
-import { isParsingNode, ParseNode, Productor, TokenKind, accept, template, lexer, ParseContext } from '../src'
+import { isParsingNode, ParseNode, Productor, TokenKind, accept, template, lexer, Grammar } from '../src'
 import { toFile } from 'ts-graphviz/adapter'
 
 declare module '../src' {
-  interface ParseNode {
+  interface ParseNode<T> {
     print?: string
   }
-  interface Input {
+  interface Input<T> {
     print?: string
   }
 }
 
-const [context, t] = template('sum')
+const grammar = new Grammar<string | RegExp>('sum')
+const t = template(grammar)
 t`sum     -> sum /[+-]/ product`    .bind((x, op, y) => op.text === '+' ? x + y : x - y)
 t`sum     -> product`
 t`product -> product /[*\/]/ factor`.bind((x, op, y) => op.text === '*' ? x * y : x / y)
@@ -21,19 +22,18 @@ t`factor  -> /"(?:[^"\\]|\\.)*"/`   .bind((str) => str.text.substring(1, str.tex
 
 const input = '233 * (114 + 514) / 1919.810 + "www"'
 
-const root = context.grammar.parse(lexer(context, input))
+const root = grammar.parse(lexer(input))
 
-function productorToString(productor: Productor, context: ParseContext) {
+function productorToString(productor: Productor<string | RegExp>) {
   if (productor.name === 'root') {
     return 'root'
   }
   return `${productor.name} -> ${productor.tokens.map(token => {
     if (token.kind === TokenKind.Term) {
-      const match = context.terms.get(token.token)
-      if (typeof match === 'string') {
-        return match
+      if (typeof token.token === 'string') {
+        return token.token
       } else {
-        return match.source
+        return token.token.source
       }
     } else {
       return token.token
@@ -42,7 +42,7 @@ function productorToString(productor: Productor, context: ParseContext) {
 }
 
 let id = 0
-function dot(node: ParseNode, results: string[], context: ParseContext): string {
+function dot(node: ParseNode<string | RegExp>, results: string[]): string {
   function pushEdge(a: string, b: string) {
     results.push(`"${a.replaceAll('"', '\\"')}" -> "${b.replaceAll('"', '\\"')}"`)
   }
@@ -54,7 +54,7 @@ function dot(node: ParseNode, results: string[], context: ParseContext): string 
   }
   if (node.print) return node.print
   node.print = `${node.productor.name}:${id++}`
-  pushLabel(node.print, productorToString(node.productor, context))
+  pushLabel(node.print, productorToString(node.productor))
   let forks = 0
   for (const branch of node.branches) {
     let fork: string
@@ -67,10 +67,10 @@ function dot(node: ParseNode, results: string[], context: ParseContext): string 
     }
     for (const next of branch) {
       if (isParsingNode(next)) {
-        const name = dot(next, results, context)
+        const name = dot(next, results)
         pushEdge(fork, name)
       } else {
-        if (!next.print) next.print = `${next.term}:${id++}`
+        if (!next.print) next.print = `${next.text}:${id++}`
         pushLabel(next.print, next.text)
         pushEdge(fork, next.print)
       }
@@ -84,7 +84,7 @@ function dot(node: ParseNode, results: string[], context: ParseContext): string 
   console.log(accept(root[0]))
   const results = []
   for (const node of root) {
-    dot(node, results, context)
+    dot(node, results)
   }
   await toFile(`digraph { ${results.join('; ')} }`, 'root.svg', {})
 })()
