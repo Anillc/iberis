@@ -1,17 +1,17 @@
-import { isParsingNode, ParseNode, Productor, TokenKind, accept, template, lexer, Grammar } from '../src'
+import { Grammar, ParseNode, Productor, TokenKind, accept, isParsingNode, s } from '../src'
 import { toFile } from 'ts-graphviz/adapter'
 
 declare module '../src' {
   interface ParseNode<T> {
     print?: string
   }
-  interface Input<T> {
+  interface Input {
     print?: string
   }
 }
 
 const grammar = new Grammar<string | RegExp>('sum')
-const t = template(grammar)
+const t = s.template(grammar)
 t`sum     -> sum /[+-]/ product`    .bind((x, op, y) => op.text === '+' ? x + y : x - y)
 t`sum     -> product`
 t`product -> product /[*\/]/ factor`.bind((x, op, y) => op.text === '*' ? x * y : x / y)
@@ -22,7 +22,7 @@ t`factor  -> /"(?:[^"\\]|\\.)*"/`   .bind((str) => str.text.substring(1, str.tex
 
 const input = '233 * (114 + 514) / 1919.810 + "www"'
 
-const root = grammar.parse(lexer(input))
+const root = grammar.parse(s.lexer(input), s.equals)
 
 function productorToString(productor: Productor<string | RegExp>) {
   if (productor.name === 'root') {

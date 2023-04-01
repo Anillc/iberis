@@ -1,10 +1,10 @@
 # iberis
 
 ```typescript
-import { Grammar, accept, template, lexer } from 'iberis'
+import { Grammar, accept, s } from 'iberis'
 
 const g = new Grammar<string | RegExp>('sum')
-const t = template(g)
+const t = s.template(g)
 t`sum     -> sum /[+-]/ product`    .bind((x, op, y) => op.text === '+' ? x + y : x - y)
 t`sum     -> product`
 t`product -> product /[*\/]/ factor`.bind((x, op, y) => op.text === '*' ? x * y : x / y)
@@ -14,7 +14,7 @@ t`factor  -> /\d+(?:\.\d+)?/`       .bind((num) => +num.text)
 t`factor  -> /"(?:[^"\\]|\\.)*"/`   .bind((str) => str.text.substring(1, str.text.length - 1).replaceAll('\\\\', '\\').replaceAll('\\"', '"'))
 
 const input = '233 * (114 + 514) / 1919.810 + "www"'
-const root = g.parse(lexer(input))
+const root = g.parse(s.lexer(input), s.equals)
 console.log(accept(root[0]))
 // output: 76.2179590688662www
 ```

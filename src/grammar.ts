@@ -20,7 +20,7 @@ export type Token<T> = Term<T> | NonTerm
 export class Productor<T = unknown, C = unknown, P extends unknown[] = []> {
   tokens: Token<T>[] = []
   accept: (...args: any[]) => any
-  choose: (node: ParseNode<T>) => (Input<T> | ParseNode<T>)[]
+  choose: (node: ParseNode<T>) => (Input | ParseNode<T>)[]
   constructor(
     public name: string,
     public id: number,
@@ -35,7 +35,7 @@ export class Productor<T = unknown, C = unknown, P extends unknown[] = []> {
   n(token: string) {
     return this.nonTerm(token)
   }
-  term(token: T): Productor<T, C, [...P, Input<T>]> {
+  term(token: T): Productor<T, C, [...P, Input]> {
     this.tokens.push({
       kind: TokenKind.Term,
       token,
@@ -51,11 +51,10 @@ export class Productor<T = unknown, C = unknown, P extends unknown[] = []> {
   }
   bind(
     accept?: (...args: [...P, C]) => any,
-    choose?: (node: ParseNode<T>) => (Input<T> | ParseNode<T>)[],
-  ): Productor<T, C, P> {
+    choose?: (node: ParseNode<T>) => (Input | ParseNode<T>)[],
+  ) {
     if (accept) this.accept = accept
     if (choose) this.choose = choose
-    return this
   }
 }
 
@@ -86,7 +85,7 @@ export class Grammar<T = unknown, C = unknown> extends Map<string, Productor<T, 
     }
     return this.nullableMap.get(name)
   }
-  parse(inputter: Inputter<T>) {
-    return parse(this, inputter)
+  parse(inputter: Inputter<T>, equals: (text: string, token: T) => boolean) {
+    return parse(this, inputter, equals)
   }
 }

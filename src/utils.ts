@@ -34,13 +34,13 @@ export function isTerm<T>(token: Term<T> | NonTerm): token is Term<T> {
   return token.kind === TokenKind.Term
 }
 
-export function isParsingNode<T>(node: Input<T> | ParseNode<T>): node is ParseNode<T> {
+export function isParsingNode<T>(node: Input | ParseNode<T>): node is ParseNode<T> {
   return !!node?.['productor']
 }
 
 function choose<T>(
   node: ParseNode<T>,
-  map: Map<ParseNode<T>, (Input<T> | ParseNode<T>)[]>,
+  map: Map<ParseNode<T>, (Input | ParseNode<T>)[]>,
 ) {
   const chosen = map.get(node)
   if (chosen || chosen === null) return true
@@ -58,7 +58,7 @@ function choose<T>(
 function _accept<T, C>(
   node: ParseNode<T>,
   context: C,
-  map: Map<ParseNode<T>, (Input<T> | ParseNode<T>)[]>,
+  map: Map<ParseNode<T>, (Input | ParseNode<T>)[]>,
 ) {
   const branch = map.get(node)
   const args = []
@@ -70,7 +70,7 @@ function _accept<T, C>(
 }
 
 export function accept<T, C>(node: ParseNode<T>, context?: C) {
-  const map = new Map<ParseNode<T>, (Input<T> | ParseNode<T>)[]>()
+  const map = new Map<ParseNode<T>, (Input | ParseNode<T>)[]>()
   if (!choose(node, map)) {
     return null
   }

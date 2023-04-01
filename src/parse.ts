@@ -1,9 +1,8 @@
 import { Grammar, Productor, TokenKind } from './grammar'
 
-export type Inputter<T> = (items: Item<T>[]) => [Item<T>[], Input<T>]
+export type Inputter<T> = (items: Item<T>[]) => [Item<T>[], Input]
 
-export interface Input<T> {
-  token: T
+export interface Input {
   text: string
   next?: number
 }
@@ -12,7 +11,7 @@ export interface ParseNode<T> {
   productor: Productor<T>
   start: number
   next: number
-  branches: (Input<T> | ParseNode<T>)[][]
+  branches: (Input | ParseNode<T>)[][]
 }
 
 export interface Item<T> {
@@ -35,8 +34,12 @@ class ItemSet<T> {
   }
 }
 
-export function parse<T>(grammar: Grammar<T>, inputter: Inputter<T>) {
-  const inputs: Input<T>[] = []
+export function parse<T>(
+  grammar: Grammar<T>,
+  inputter: Inputter<T>,
+  equals: (text: string, token: T) => boolean,
+) {
+  const inputs: Input[] = []
 
   const sets: ItemSet<T>[] = [new ItemSet()]
   const entries = grammar.get(grammar.entry)
@@ -73,6 +76,7 @@ export function parse<T>(grammar: Grammar<T>, inputter: Inputter<T>) {
         if (token.kind === TokenKind.NonTerm) {
           // predicate
           const predications = grammar.get(token.token)
+          if (!predications) continue
           for (const productor of predications) {
             set.add({
               productor,
@@ -150,20 +154,20 @@ export function parse<T>(grammar: Grammar<T>, inputter: Inputter<T>) {
       }
     }
     for (const node of results) {
-      let branches: (Input<T> | ParseNode<T>)[][] = [[]]
+      let branches: (Input | ParseNode<T>)[][] = [[]]
       for (const token of node.productor.tokens) {
         if (token.kind === TokenKind.Term) {
-          const newBranches: (Input<T> | ParseNode<T>)[][] = []
+          const newBranches: (Input | ParseNode<T>)[][] = []
           for (const branch of branches) {
             const branchNext = branch.at(-1)?.next || start
-            if (branchNext + 1 > node.next || inputs[branchNext].token !== token.token) {
+            if (branchNext + 1 > node.next || !equals(inputs[branchNext].text, token.token)) {
               continue
             }
             newBranches.push(branch.concat(inputs[branchNext]))
           }
           branches = newBranches
         } else {
-          const newBranches: (Input<T> | ParseNode<T>)[][] = []
+          const newBranches: (Input | ParseNode<T>)[][] = []
           for (const branch of branches) {
             const nextParsingNodes = search(token.token, branch.at(-1)?.next || start, searched)
             for (const next of nextParsingNodes) {
