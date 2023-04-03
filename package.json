@@ -1,6 +1,6 @@
 {
   "name": "iberis",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "lib/index.js",
   "repository": "https://github.com/Anillc/iberis.git",
   "author": "Anillc <void@anillc.cn>",
