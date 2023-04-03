@@ -67,18 +67,36 @@ export namespace simple {
       rest = rest.trim()
       if (!rest) return [[], null]
       let input: Input
+      let current: TermType
       for (const item of items) {
         const { token } = item.productor.tokens[item.point] as Term<TermType>
-        if (typeof token === 'string') {
-          if (!rest.startsWith(token)) continue
-          if (!input || token.length < input.text.length) {
-            input = { text: token }
+        const matched = match(rest, token)
+        if (!matched) continue
+        if (typeof current === typeof token) {
+          // compare length when type is the same
+          // longer string has higher priority
+          // short result of regex has higher priority
+          if (typeof token === 'string' && matched.length > input.text.length) {
+            if (matched.length > input.text.length) {
+              input = { text: matched }
+              current = token
+            }
+          } else {
+            if (matched.length < input.text.length) {
+              input = { text: matched }
+              current = token
+            }
           }
         } else {
-          const match = new RegExp(`^(${token.source})`).exec(rest)
-          if (!match) continue
-          if (!input || match[1].length < input.text.length) {
-            input = { text: match[1] }
+          if (!input) {
+            input = { text: matched }
+            current = token
+          } else {
+            // string has higher priority when type is different
+            if (typeof token === 'string') {
+              input = { text: matched }
+              current = token
+            }
           }
         }
       }
@@ -100,6 +118,16 @@ export namespace simple {
       return text === token
     } else {
       return new RegExp(`^${token.source}`).test(text)
+    }
+  }
+
+  export function match(text: string, token: TermType): string {
+    if (typeof token === 'string') {
+      if (text.startsWith(token)) {
+        return token
+      }
+    } else {
+      return new RegExp(`^(${token.source})`).exec(text)?.[1]
     }
   }
 
