@@ -101,8 +101,14 @@ export function parse<T>(
       return token && token.kind === TokenKind.Term
     })
     if (termItems.length === 0) break
-    const [nextItems, input] = inputter(termItems)
-    if (!input) break
+    const temp = inputter(termItems)
+    // EOF
+    if (!temp) break
+    const [nextItems, input] = temp
+    if (!input) {
+      // may throw an error?
+      return []
+    }
     input.next = inputs.length + 1
     inputs.push(input)
     const nextSet = sets[i + 1] = new ItemSet()

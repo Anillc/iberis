@@ -65,7 +65,7 @@ export namespace simple {
     let rest = input
     return (items: Item<TermType>[]): [Item<TermType>[], Input] => {
       rest = rest.trim()
-      if (!rest) return [[], null]
+      if (!rest) return null
       let input: Input
       let current: TermType
       for (const item of items) {
