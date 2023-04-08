@@ -1,4 +1,4 @@
-import { Grammar, NonTerm, Productor, Term, TokenKind } from './grammar'
+import { Grammar, NonTerm, Productor, Term, Token, TokenKind } from './grammar'
 import { Input, ParseNode } from './parse'
 
 export function nullableMap(grammar: Grammar) {
@@ -75,4 +75,10 @@ export function accept<T, C>(node: ParseNode<T>, context?: C) {
     return null
   }
   return _accept(node, context, map)
+}
+
+export class ParsingError<T> extends Error {
+  constructor(public position: number, public terms: Token<T>[]) {
+    super()
+  }
 }

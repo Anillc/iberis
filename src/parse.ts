@@ -1,9 +1,11 @@
 import { Grammar, Productor, TokenKind } from './grammar'
+import { ParsingError } from './utils'
 
 export type Inputter<T> = (items: Item<T>[]) => [Item<T>[], Input]
 
 export interface Input {
   text: string
+  position: number
   next?: number
 }
 
@@ -106,8 +108,10 @@ export function parse<T>(
     if (!temp) break
     const [nextItems, input] = temp
     if (!input) {
-      // may throw an error?
-      return []
+      const terms = termItems.map(item =>
+        item.productor.tokens[item.point])
+      const position = inputs[0] ? inputs[0].position + inputs[0].text.length : 0
+      throw new ParsingError<T>(position, terms)
     }
     input.next = inputs.length + 1
     inputs.push(input)

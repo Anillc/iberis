@@ -61,10 +61,12 @@ export namespace simple {
     }
   }
 
-  export function lexer(input: string) {
-    let rest = input
+  export function lexer(text: string) {
+    let rest = text
+    let position = 0
     return (items: Item<TermType>[]): [Item<TermType>[], Input] => {
       rest = rest.trim()
+      position += text.length - rest.length
       if (!rest) return null
       let input: Input
       let current: TermType
@@ -78,23 +80,23 @@ export namespace simple {
           // short result of regex has higher priority
           if (typeof token === 'string' && matched.length > input.text.length) {
             if (matched.length > input.text.length) {
-              input = { text: matched }
+              input = { text: matched, position }
               current = token
             }
           } else {
             if (matched.length < input.text.length) {
-              input = { text: matched }
+              input = { text: matched, position }
               current = token
             }
           }
         } else {
           if (!input) {
-            input = { text: matched }
+            input = { text: matched, position }
             current = token
           } else {
             // string has higher priority when type is different
             if (typeof token === 'string') {
-              input = { text: matched }
+              input = { text: matched, position }
               current = token
             }
           }
@@ -102,6 +104,7 @@ export namespace simple {
       }
       if (!input) return [[], null]
       rest = rest.substring(input.text.length)
+      position += text.length - rest.length
       const nextItems: Item<TermType>[] = []
       for (const item of items) {
         const { token } = item.productor.tokens[item.point] as Term<TermType>
